@@ -1,0 +1,2501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heavy Hickory Circular Sawmill Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --steel-dark: #14171a;
+            --steel-panel: #1e2328;
+            --steel-border: #323a42;
+            --safety-amber: #f59e0b;
+            --laser-red: #ef4444;
+            --hydraulic-blue: #3b82f6;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0e1013;
+            color: #e2e8f0;
+            overflow-x: hidden;
+            user-select: none;
+        }
+
+        .font-display {
+            font-family: 'Chakra Petch', sans-serif;
+        }
+
+        .font-mono-tech {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Industrial tactile buttons */
+        .mill-btn {
+            transition: all 0.08s ease;
+            box-shadow: 0 3px 0 rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+        }
+        .mill-btn:active:not(:disabled) {
+            transform: translateY(2px);
+            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+        .mill-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        /* Custom Range Slider for Feed Lever */
+        input[type="range"].feed-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="range"].feed-slider::-webkit-slider-runnable-track {
+            height: 12px;
+            border-radius: 6px;
+            background: linear-gradient(90deg, #2563eb 0%, #2563eb 38%, #334155 42%, #334155 58%, #16a34a 62%, #eab308 85%, #dc2626 100%);
+            border: 1px solid #475569;
+        }
+        input[type="range"].feed-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 28px;
+            border-radius: 4px;
+            background: linear-gradient(180deg, #f8fafc 0%, #94a3b8 100%);
+            border: 2px solid #0f172a;
+            margin-top: -9px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.8);
+        }
+        input[type="range"].feed-slider::-moz-range-track {
+            height: 12px;
+            border-radius: 6px;
+            background: linear-gradient(90deg, #2563eb 0%, #2563eb 38%, #334155 42%, #334155 58%, #16a34a 62%, #eab308 85%, #dc2626 100%);
+            border: 1px solid #475569;
+        }
+        input[type="range"].feed-slider::-moz-range-thumb {
+            width: 24px;
+            height: 28px;
+            border-radius: 4px;
+            background: linear-gradient(180deg, #f8fafc 0%, #94a3b8 100%);
+            border: 2px solid #0f172a;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.8);
+        }
+
+        /* Subtle hazard stripes */
+        .hazard-bar {
+            background: repeating-linear-gradient(
+                -45deg,
+                #eab308,
+                #eab308 10px,
+                #18181b 10px,
+                #18181b 20px
+            );
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+<style id="vibe-apps-navigation">#vibe-back-link{position:fixed!important;top:12px!important;left:12px!important;z-index:2147483647!important;display:inline-flex!important;align-items:center!important;gap:8px!important;padding:10px 15px!important;border-radius:999px!important;background:#12243d!important;color:#fff!important;font:600 14px/1.2 system-ui,-apple-system,sans-serif!important;text-decoration:none!important;box-shadow:0 4px 18px #0006!important;border:1px solid #ffffff55!important}#vibe-back-link:hover,#vibe-back-link:focus{background:#255b9c!important;outline:2px solid #fff!important;outline-offset:2px!important}@media(max-width:600px){#vibe-back-link{top:8px!important;left:8px!important;padding:8px 11px!important;font-size:12px!important}}</style>
+<a id="vibe-back-link" href="index.html" aria-label="Back to Vibe Apps 1">← Back to Vibe Apps 1</a>
+
+    <!-- TOP SAWYER CAB HUD HEADER -->
+    <header class="bg-[#161a1e] border-b border-slate-700/80 px-3 py-2 shadow-lg">
+        <div class="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-3">
+            <!-- Brand & Mill Info -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-inner">
+                    <!-- Circular Saw Icon -->
+                    <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <circle cx="12" cy="12" r="7"/>
+                        <circle cx="12" cy="12" r="2"/>
+                        <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-display font-bold text-lg sm:text-xl tracking-wide text-slate-100 uppercase">Heavy Hickory Head-Rig #855</h1>
+                        <span class="hidden sm:inline-block text-[10px] font-mono-tech uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">60" Main + 36" Top Saw • 40" Cap</span>
+                    </div>
+                    <p class="text-xs text-slate-400">Detroit Diesel 6-71 Powerplant • 3-Knee Hydraulic Carriage • 1/8-Turn Nibble Capable</p>
+                </div>
+            </div>
+
+            <!-- Telemetry Gauges -->
+            <div class="flex flex-wrap items-center gap-2 sm:gap-4">
+                <!-- Detroit Diesel RPM & Load -->
+                <div class="bg-[#0f1215] border border-slate-700 rounded-lg px-3 py-1.5 min-w-[155px]">
+                    <div class="flex justify-between items-center text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+                        <span>Detroit RPM</span>
+                        <span id="rpm-text" class="font-mono-tech text-emerald-400 font-bold">2100 RPM</span>
+                    </div>
+                    <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden mt-1">
+                        <div id="rpm-bar" class="h-full bg-emerald-500 transition-all duration-75" style="width: 92%"></div>
+                    </div>
+                    <div class="flex justify-between items-center text-[10px] mt-0.5">
+                        <span class="text-slate-500">Blade Temp</span>
+                        <span id="temp-text" class="font-mono-tech text-slate-300">115°F</span>
+                    </div>
+                </div>
+
+                <!-- Production Metrics -->
+                <div class="bg-[#0f1215] border border-slate-700 rounded-lg px-3 py-1.5 flex items-center gap-4">
+                    <div>
+                        <div class="text-[10px] uppercase tracking-wider text-slate-400">Board Feet</div>
+                        <div id="bf-total" class="font-mono-tech text-base font-bold text-amber-400">0 BF</div>
+                    </div>
+                    <div class="h-7 w-px bg-slate-800"></div>
+                    <div>
+                        <div class="text-[10px] uppercase tracking-wider text-slate-400">Waste / Slab</div>
+                        <div id="waste-ratio" class="font-mono-tech text-base font-bold text-slate-300">0%</div>
+                    </div>
+                    <div class="h-7 w-px bg-slate-800"></div>
+                    <div>
+                        <div class="text-[10px] uppercase tracking-wider text-slate-400">Earnings</div>
+                        <div id="cash-total" class="font-mono-tech text-base font-bold text-emerald-400">$0</div>
+                    </div>
+                </div>
+
+                <!-- Audio & Help Controls -->
+                <div class="flex items-center gap-2">
+                    <button id="audio-toggle-btn" class="mill-btn bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5" title="Toggle Web Audio Engine & Saw Sounds">
+                        <span id="audio-icon">🔇</span>
+                        <span id="audio-label" class="hidden md:inline">Start Engine Audio</span>
+                    </button>
+                    <button id="help-modal-btn" class="mill-btn bg-slate-800 hover:bg-slate-700 border border-slate-600 text-amber-400 px-3 py-2 rounded-lg text-xs font-semibold">
+                        ? Guide
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN WORKSPACE: DUAL CANVAS VIEWS + CUSTOMER ORDER -->
+    <main class="flex-1 max-w-[1600px] w-full mx-auto p-2 sm:p-3 grid grid-cols-1 lg:grid-cols-12 gap-3">
+
+        <!-- LEFT / CENTER: OVERHEAD HEAD-RIG MILL CANVAS (8 cols on lg) -->
+        <section class="lg:col-span-8 flex flex-col bg-[#161a1e] border border-slate-700/90 rounded-xl overflow-hidden shadow-xl">
+            <div class="px-3 py-1.5 bg-[#1c2127] border-b border-slate-700/80 flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <h2 class="font-display font-semibold text-sm uppercase tracking-wider text-slate-200">Head-Rig Carriage & Live Deck (Top-Down View)</h2>
+                </div>
+                <div class="flex items-center gap-3 text-xs font-mono-tech">
+                    <span class="text-slate-400">Carriage: <strong id="carriage-pos-readout" class="text-slate-200">HOME (0.0 ft)</strong></span>
+                    <span class="text-slate-400">Dogs: <strong id="dog-status-badge" class="text-rose-400">UNCLAMPED</strong></span>
+                </div>
+            </div>
+
+            <!-- Canvas Container -->
+            <div id="mill-canvas-wrapper" class="relative w-full flex-1 min-h-[340px] sm:min-h-[410px] bg-[#121417]">
+                <canvas id="millCanvas" class="block w-full h-full"></canvas>
+
+                <!-- Floating Sawyer Alert Banner (Replaces alert()) -->
+                <div id="sawyer-toast" class="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg bg-slate-900/95 border border-amber-500/70 text-amber-300 font-display text-sm font-semibold shadow-2xl opacity-0 transition-opacity duration-200 text-center max-w-[90%]">
+                    Status message
+                </div>
+
+                <!-- Quick Legend Overlay -->
+                <div class="pointer-events-none absolute bottom-2 left-2 bg-slate-950/80 backdrop-blur-sm border border-slate-800 rounded-md px-2.5 py-1 text-[11px] text-slate-400 flex flex-wrap gap-3">
+                    <span><strong class="text-red-400">---</strong> Laser Kerf (26" Main / 42" Top Saw)</span>
+                    <span><strong class="text-amber-400">[W/S]</strong> Feed/Rev</span>
+                    <span><strong class="text-amber-400">[A/D]</strong> Setworks ±1"</span>
+                    <span><strong class="text-amber-400">[E]</strong> 1/8 Turn (45°)</span>
+                    <span><strong class="text-amber-400">[R]</strong> 1/4 Turn (90°)</span>
+                    <span><strong class="text-amber-400">[T]</strong> Top Saw</span>
+                    <span><strong class="text-amber-400">[Space]</strong> Dogs</span>
+                    <span><strong class="text-amber-400">[C]</strong> Dump Slab</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- RIGHT COLUMN: END-GRAIN CROSS-SECTION & CUSTOMER ORDER TICKET (4 cols on lg) -->
+        <aside class="lg:col-span-4 flex flex-col gap-3">
+
+            <!-- END-GRAIN CROSS-SECTION VIEWER -->
+            <div class="bg-[#161a1e] border border-slate-700/90 rounded-xl overflow-hidden shadow-xl flex flex-col">
+                <div class="px-3 py-1.5 bg-[#1c2127] border-b border-slate-700/80 flex items-center justify-between">
+                    <h2 class="font-display font-semibold text-sm uppercase tracking-wider text-slate-200">End-Grain Cross-Section & Kerf</h2>
+                    <div class="flex items-center gap-1.5">
+                        <span id="log-angle-badge" class="text-[11px] font-mono-tech px-1.5 py-0.5 rounded bg-blue-950/90 text-blue-300 border border-blue-700/50">0° (0/8)</span>
+                        <span id="log-species-badge" class="text-[11px] font-mono-tech px-2 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-700/50">No Log Loaded</span>
+                    </div>
+                </div>
+                <div id="cross-canvas-wrapper" class="relative w-full h-[275px] bg-[#0f1216]">
+                    <canvas id="crossCanvas" class="block w-full h-full"></canvas>
+                </div>
+                <div class="px-3 py-2 bg-[#121519] border-t border-slate-800 grid grid-cols-3 gap-2 text-center">
+                    <div>
+                        <div class="text-[10px] uppercase text-slate-400">Knee Set</div>
+                        <div id="readout-knee-dist" class="font-mono-tech text-sm font-bold text-amber-400">24.0"</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] uppercase text-slate-400">Log Span</div>
+                        <div id="readout-log-dims" class="font-mono-tech text-sm font-bold text-slate-200">--</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] uppercase text-slate-400">Next Slice</div>
+                        <div id="readout-cut-thick" class="font-mono-tech text-sm font-bold text-slate-500">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CUSTOMER LUMBER ORDER TICKET -->
+            <div class="flex-1 bg-[#161a1e] border border-slate-700/90 rounded-xl overflow-hidden shadow-xl flex flex-col justify-between">
+                <div>
+                    <div class="px-3 py-1.5 bg-[#1c2127] border-b border-slate-700/80 flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="text-amber-400">📋</span>
+                            <h2 class="font-display font-semibold text-sm uppercase tracking-wider text-slate-200">Sawmill Order Ticket</h2>
+                        </div>
+                        <span id="order-number" class="font-mono-tech text-xs text-slate-400">ORD #101</span>
+                    </div>
+
+                    <div class="p-3 space-y-2.5">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <div id="order-title" class="font-display font-bold text-base text-amber-300">Heavy 2×10 Lowboy Decking</div>
+                                <div id="order-desc" class="text-xs text-slate-400 mt-0.5">Square a heavy log to 10" height, then slice 2" thick planks.</div>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <div class="text-[10px] uppercase text-slate-400">Payout</div>
+                                <div id="order-payout" class="font-mono-tech font-bold text-emerald-400 text-base">$340</div>
+                            </div>
+                        </div>
+
+                        <!-- Target Spec Box -->
+                        <div class="bg-[#0f1215] border border-slate-700/80 rounded-lg p-2.5">
+                            <div class="flex justify-between items-center text-xs mb-1.5">
+                                <span class="text-slate-300 font-medium">Target Spec: <strong id="order-spec-text" class="font-mono-tech text-white">2.0" × 10.0"</strong> <span class="text-slate-500">(±0.25")</span></span>
+                                <span id="order-progress-count" class="font-mono-tech font-bold text-amber-400">0 / 6 pcs</span>
+                            </div>
+                            <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                                <div id="order-progress-bar" class="h-full bg-amber-500 transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Off-Bearing Tally -->
+                        <div>
+                            <div class="text-[10px] uppercase tracking-wider text-slate-400 mb-1">Recent Off-Bearing Conveyor Output</div>
+                            <div id="recent-cuts-list" class="flex flex-wrap gap-1.5 min-h-[26px]">
+                                <span class="text-xs text-slate-500 italic">No cuts made yet...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-3 py-2 bg-[#121519] border-t border-slate-800 flex items-center justify-between gap-2">
+                    <button id="skip-order-btn" class="text-xs text-slate-400 hover:text-slate-200 underline">New Order Ticket</button>
+                    <button id="clear-bunk-btn" class="mill-btn bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 px-2.5 py-1 rounded text-xs font-medium" title="Clear remaining log/slab to chipper conveyor [C]">
+                        Dump Remainder / Slab [C]
+                    </button>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- BOTTOM SAWYER CAB CONTROL CONSOLE -->
+    <footer class="bg-[#181c21] border-t-2 border-slate-700 px-3 py-2.5 shadow-2xl">
+        <div class="max-w-[1600px] mx-auto grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+
+            <!-- 1. LOG DECK & HYDRAULIC TURNER (4 cols) -->
+            <div class="md:col-span-4 bg-[#111417] border border-slate-700/90 rounded-xl p-2.5">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-[11px] font-display uppercase tracking-wider text-slate-400 font-semibold">1. Log Deck & Hydraulics</span>
+                    <div class="flex items-center gap-2">
+                        <button id="btn-queue-40" class="text-[10px] font-mono-tech px-1.5 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/35 text-amber-300 border border-amber-500/40" title="Queue a massive 40-inch Pignut Hickory log on the live deck">
+                            +40" Giant
+                        </button>
+                        <span id="deck-queue-text" class="text-[11px] font-mono-tech text-amber-400">Next: 40" Hickory</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-4 gap-1.5">
+                    <button id="btn-load-log" class="mill-btn bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold py-2 px-1 rounded-lg text-[11px] flex flex-col items-center justify-center gap-0.5">
+                        <span>🪵 Load</span>
+                        <span class="text-[9px] opacity-80 font-mono-tech">[L]</span>
+                    </button>
+                    <button id="btn-toggle-dogs" class="mill-btn bg-rose-700 hover:bg-rose-600 text-white font-bold py-2 px-1 rounded-lg text-[11px] flex flex-col items-center justify-center gap-0.5">
+                        <span id="btn-dogs-label">🔒 Dogs</span>
+                        <span class="text-[9px] opacity-80 font-mono-tech">[SPC]</span>
+                    </button>
+                    <button id="btn-turn-eighth" class="mill-btn bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-1 rounded-lg text-[11px] flex flex-col items-center justify-center gap-0.5" title="Spin log 1/8 turn (45°) to nibble oversized corners [E]">
+                        <span>🔄 1/8 (45°)</span>
+                        <span class="text-[9px] opacity-80 font-mono-tech">[E]</span>
+                    </button>
+                    <button id="btn-turn-log" class="mill-btn bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-1 rounded-lg text-[11px] flex flex-col items-center justify-center gap-0.5" title="Turn log 1/4 turn (90°) [R]">
+                        <span>🔄 1/4 (90°)</span>
+                        <span class="text-[9px] opacity-80 font-mono-tech">[R]</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2. ELECTRONIC SETWORKS & TOP SAW (4 cols) -->
+            <div class="md:col-span-4 bg-[#111417] border border-slate-700/90 rounded-xl p-2.5">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-[11px] font-display uppercase tracking-wider text-slate-400 font-semibold">2. Setworks & Top Saw</span>
+                    <button id="btn-toggle-topsaw" class="text-[10px] font-mono-tech px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold" title="Toggle 36-inch Overhead Top Saw (42&quot; Cut Height) [T]">
+                        TOP SAW: ON [T]
+                    </button>
+                </div>
+                <div class="grid grid-cols-5 gap-1.5">
+                    <button id="btn-knee-back" class="mill-btn bg-slate-700 hover:bg-slate-600 text-white font-mono-tech font-bold py-2 px-1 rounded-lg text-xs flex flex-col items-center justify-center" title="Retract Knees 1 inch [A]">
+                        <span>◀ -1"</span>
+                        <span class="text-[9px] text-slate-400">[A]</span>
+                    </button>
+                    <button id="btn-knee-fwd" class="mill-btn bg-slate-700 hover:bg-slate-600 text-white font-mono-tech font-bold py-2 px-1 rounded-lg text-xs flex flex-col items-center justify-center" title="Advance Knees 1 inch [D]">
+                        <span>+1" ▶</span>
+                        <span class="text-[9px] text-slate-400">[D]</span>
+                    </button>
+                    <button id="btn-preset-nibble" class="mill-btn bg-amber-900/80 hover:bg-amber-800 border border-amber-500/60 text-amber-200 font-semibold py-2 px-1 rounded-lg text-[11px] flex flex-col items-center justify-center" title="Nibble a tiny 0.25&quot; sliver off the outer edge for 1/8-turn log reduction [N]">
+                        <span>Nibble</span>
+                        <span class="text-[9px] text-amber-300">0.25" [N]</span>
+                    </button>
+                    <button id="btn-preset-1in" class="mill-btn bg-slate-800 hover:bg-slate-700 border border-slate-600 text-cyan-300 font-semibold py-2 px-1 rounded-lg text-[11px] flex flex-col items-center justify-center" title="Advance knees for a 1-inch board + kerf [1]">
+                        <span>1" Brd</span>
+                        <span class="text-[9px] text-slate-400">[1]</span>
+                    </button>
+                    <button id="btn-preset-2in" class="mill-btn bg-slate-800 hover:bg-slate-700 border border-slate-600 text-cyan-300 font-semibold py-2 px-1 rounded-lg text-[11px] flex flex-col items-center justify-center" title="Advance knees for a 2-inch plank + kerf [2]">
+                        <span>2" Plk</span>
+                        <span class="text-[9px] text-slate-400">[2]</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 3. CARRIAGE HYDROSTATIC FEED LEVER (4 cols) -->
+            <div class="md:col-span-4 bg-[#111417] border border-slate-700/90 rounded-xl p-2.5">
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-[11px] font-display uppercase tracking-wider text-slate-400 font-semibold">3. Carriage Feed Lever</span>
+                    <span id="feed-rate-readout" class="text-[11px] font-mono-tech font-bold text-slate-300">NEUTRAL (0.0 ft/s)</span>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button id="btn-rev-fast" class="mill-btn bg-blue-700 hover:bg-blue-600 text-white font-bold px-2.5 py-2 rounded-lg text-xs shrink-0" title="Return Carriage to Start [S or Down]">
+                        ◀ REV
+                    </button>
+
+                    <div class="flex-1 flex flex-col">
+                        <input id="feed-lever" type="range" min="-100" max="100" value="0" step="1" class="feed-slider w-full">
+                        <div class="flex justify-between text-[9px] font-mono-tech text-slate-400 px-1 mt-0.5">
+                            <span>RETURN</span>
+                            <span>STOP</span>
+                            <span class="text-emerald-400">STEADY</span>
+                            <span class="text-rose-400">MAX</span>
+                        </div>
+                    </div>
+
+                    <button id="btn-stop-feed" class="mill-btn bg-slate-700 hover:bg-slate-600 text-white font-bold px-2.5 py-2 rounded-lg text-xs shrink-0" title="Center Feed Lever [X]">
+                        STOP
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </footer>
+
+    <!-- SAWYER FIELD GUIDE MODAL -->
+    <div id="help-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-[#181d22] border border-slate-600 rounded-2xl max-w-xl w-full p-5 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+                <h3 class="font-display font-bold text-xl text-amber-400 uppercase">Sawyer's Operating Manual</h3>
+                <button id="close-help-btn" class="text-slate-400 hover:text-white text-xl font-bold px-2">&times;</button>
+            </div>
+            <div class="space-y-3 text-sm text-slate-300 leading-relaxed">
+                <p><strong class="text-white">1. Load & Dog the Log:</strong> Click <strong>Load [L]</strong> to roll a massive log (up to 40" diameter) onto the 3 headblock knees. Always click <strong>Dogs [Space]</strong> before sawing—an undogged log will kick out when hitting the 60" circular saw!</p>
+                <p><strong class="text-white">2. Top-Saw & 1/8-Turn (45°) Nibbling for 40" Oversized Logs:</strong> A standard 60" main blade reaches 26" high. Engage the overhead <strong>36" Top Saw [T]</strong> (reaches 42") and use <strong>Nibble 0.25" [N]</strong> to shave tiny slivers off the outer bark, then unclamp dogs and click <strong>1/8 (45°) [E]</strong> to spin the log an eighth of a turn. Repeat around the log to whittle an oversized 40" giant down into a manageable octagonal cant!</p>
+                <p><strong class="text-white">3. Squaring & Slicing Boards to Order:</strong> Once reduced, use <strong>1/4 (90°) [R]</strong> turns to square all 4 sides to the order's target width (e.g., 10" wide for 2×10 planks), then use <strong>1" Brd [1]</strong> or <strong>2" Plk [2]</strong> setworks presets (which include the 0.25" saw kerf) and feed into the blade.</p>
+                <p><strong class="text-white">4. Watch Detroit Diesel RPM:</strong> Dense 40" Hickory requires steady feed pressure. Pushing the feed lever too hard bogs the engine below 1,350 RPM and overheats the saw blade. Ease off the lever to let the 6-71 Detroit recover!</p>
+            </div>
+            <div class="pt-2 flex justify-end">
+                <button id="start-sawing-btn" class="mill-btn bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-5 py-2 rounded-lg text-sm">
+                    Back to Sawyer Cab
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * ============================================================================
+         * HEAVY HICKORY CIRCULAR SAWMILL SIMULATOR (#855)
+         * Inspired by Mark Galicic's stationary circular head-rig sawmill.
+         * Single-file HTML5 Canvas + Web Audio API simulation.
+         * ============================================================================
+         */
+
+        // --- WEB AUDIO SYNTHESIZER (Detroit Diesel, 60" Saw Blade, Hydraulics, Cut) ---
+        class SawmillAudio {
+            constructor() {
+                this.ctx = null;
+                this.enabled = false;
+                this.engineOsc = null;
+                this.engineSub = null;
+                this.engineGain = null;
+                this.bladeOsc = null;
+                this.bladeGain = null;
+                this.cutNoise = null;
+                this.cutFilter = null;
+                this.cutGain = null;
+            }
+
+            toggle() {
+                if (!this.ctx) {
+                    this.init();
+                }
+                if (this.enabled) {
+                    this.ctx.suspend();
+                    this.enabled = false;
+                } else {
+                    this.ctx.resume();
+                    this.enabled = true;
+                }
+                return this.enabled;
+            }
+
+            init() {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioCtx();
+
+                // 1. Detroit Diesel 2-Stroke Rumble (Sawtooth + Sub-octave + Lowpass)
+                this.engineOsc = this.ctx.createOscillator();
+                this.engineSub = this.ctx.createOscillator();
+                const engineFilter = this.ctx.createBiquadFilter();
+                this.engineGain = this.ctx.createGain();
+
+                this.engineOsc.type = 'sawtooth';
+                this.engineSub.type = 'triangle';
+                this.engineOsc.frequency.value = 58;
+                this.engineSub.frequency.value = 29;
+
+                engineFilter.type = 'lowpass';
+                engineFilter.frequency.value = 175;
+
+                this.engineGain.gain.value = 0.09;
+
+                this.engineOsc.connect(engineFilter);
+                this.engineSub.connect(engineFilter);
+                engineFilter.connect(this.engineGain);
+                this.engineGain.connect(this.ctx.destination);
+
+                this.engineOsc.start();
+                this.engineSub.start();
+
+                // 2. 60-inch Circular Blade Air Whine
+                this.bladeOsc = this.ctx.createOscillator();
+                this.bladeGain = this.ctx.createGain();
+                this.bladeOsc.type = 'sine';
+                this.bladeOsc.frequency.value = 410;
+                this.bladeGain.gain.value = 0.018;
+
+                this.bladeOsc.connect(this.bladeGain);
+                this.bladeGain.connect(this.ctx.destination);
+                this.bladeOsc.start();
+
+                // 3. Wood Cutting Scream (Filtered White Noise)
+                const bufferSize = this.ctx.sampleRate * 2;
+                const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+
+                this.cutNoise = this.ctx.createBufferSource();
+                this.cutNoise.buffer = noiseBuffer;
+                this.cutNoise.loop = true;
+
+                this.cutFilter = this.ctx.createBiquadFilter();
+                this.cutFilter.type = 'bandpass';
+                this.cutFilter.frequency.value = 1250;
+                this.cutFilter.Q.value = 3.2;
+
+                this.cutGain = this.ctx.createGain();
+                this.cutGain.gain.value = 0.0;
+
+                this.cutNoise.connect(this.cutFilter);
+                this.cutFilter.connect(this.cutGain);
+                this.cutGain.connect(this.ctx.destination);
+                this.cutNoise.start();
+            }
+
+            update(rpm, isCutting, cutDepthRatio, feedSpeed) {
+                if (!this.ctx || !this.enabled) return;
+                const now = this.ctx.currentTime;
+                const rpmFactor = Math.max(0.4, rpm / 2100);
+
+                // Engine pitch tracks RPM
+                this.engineOsc.frequency.setTargetAtTime(32 + rpmFactor * 30, now, 0.06);
+                this.engineSub.frequency.setTargetAtTime(16 + rpmFactor * 15, now, 0.06);
+                this.engineGain.gain.setTargetAtTime(isCutting ? 0.14 : 0.08, now, 0.08);
+
+                // Blade ring pitch
+                this.bladeOsc.frequency.setTargetAtTime(220 + rpmFactor * 210, now, 0.08);
+
+                // Sawing timber roar
+                if (isCutting && feedSpeed > 0.05) {
+                    const intensity = Math.min(0.26, 0.06 + cutDepthRatio * 0.14 + (feedSpeed / 6) * 0.08);
+                    this.cutGain.gain.setTargetAtTime(intensity, now, 0.04);
+                    this.cutFilter.frequency.setTargetAtTime(950 + rpmFactor * 550 + cutDepthRatio * 300, now, 0.05);
+                } else {
+                    this.cutGain.gain.setTargetAtTime(0.0, now, 0.06);
+                }
+            }
+
+            playHydraulicClunk(pitch = 140) {
+                if (!this.ctx || !this.enabled) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(pitch, now);
+                osc.frequency.exponentialRampToValueAtTime(45, now + 0.14);
+
+                gain.gain.setValueAtTime(0.18, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.16);
+            }
+
+            playBoardDrop() {
+                if (!this.ctx || !this.enabled) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(190, now);
+                osc.frequency.exponentialRampToValueAtTime(68, now + 0.18);
+
+                gain.gain.setValueAtTime(0.16, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.19);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.2);
+            }
+
+            playChaChing() {
+                if (!this.ctx || !this.enabled) return;
+                const now = this.ctx.currentTime;
+
+                // 1. "Cha" — crisp mechanical drawer latch / coin clink noise burst
+                const bufferSize = Math.floor(this.ctx.sampleRate * 0.08);
+                const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.25));
+                }
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = noiseBuffer;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(2400, now);
+                filter.Q.setValueAtTime(2.5, now);
+
+                const noiseGain = this.ctx.createGain();
+                noiseGain.gain.setValueAtTime(0.28, now);
+                noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+                noise.connect(filter);
+                filter.connect(noiseGain);
+                noiseGain.connect(this.ctx.destination);
+                noise.start(now);
+
+                // 2. "Ching!" — bright dual-harmonic cash register bell ring
+                const bellStart = now + 0.075;
+                const freqs = [1760, 2637, 3520];
+                freqs.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, bellStart);
+
+                    const peakGain = idx === 0 ? 0.22 : idx === 1 ? 0.14 : 0.08;
+                    const decay = idx === 0 ? 0.85 : 0.55;
+                    gain.gain.setValueAtTime(0.001, bellStart);
+                    gain.gain.linearRampToValueAtTime(peakGain, bellStart + 0.008);
+                    gain.gain.exponentialRampToValueAtTime(0.0008, bellStart + decay);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(bellStart);
+                    osc.stop(bellStart + decay + 0.02);
+                });
+            }
+        }
+
+        const audio = new SawmillAudio();
+
+        // --- SAWMILL CONSTANTS & SPECIES DATA ---
+        const BLADE_DIAMETER = 60;      // 60-inch main lower circular blade
+        const TOP_SAW_DIAMETER = 36;    // 36-inch overhead top saw blade
+        const MAX_MAIN_CUT_HEIGHT = 26; // 26-inch max cut clearance with bottom blade alone
+        const MAX_TOP_SAW_HEIGHT = 42;  // 42-inch max cut clearance with 36" top saw engaged
+        const MAX_KNEE_OPENING = 42;    // 42-inch max opening to accommodate 40" logs
+        const KERF = 0.25;              // 1/4" inserted-tooth circular saw kerf
+        const CARRIAGE_TRAVEL_FT = 28;  // Total track length in feet
+        const BLADE_Z_FT = 15.5;        // Position along track where saw blade sits
+
+        const WOOD_SPECIES = [
+            {
+                name: 'Pignut Hickory',
+                hardness: 1.35,
+                barkColor: '#483b31',
+                barkFurrow: '#241c16',
+                barkHighlight: '#69584a',
+                lichenColor: 'rgba(134, 152, 122, 0.28)',
+                heartColor: '#9e6b43',
+                heartDark: '#734929',
+                sapColor: '#ebd4b7',
+                grainColor: '#6b4223',
+                valueMult: 1.25
+            },
+            {
+                name: 'Red Oak',
+                hardness: 1.05,
+                barkColor: '#433b37',
+                barkFurrow: '#201b19',
+                barkHighlight: '#615650',
+                lichenColor: 'rgba(145, 158, 138, 0.25)',
+                heartColor: '#be7c56',
+                heartDark: '#8f5536',
+                sapColor: '#efd6c2',
+                grainColor: '#7d4528',
+                valueMult: 1.05
+            },
+            {
+                name: 'White Ash',
+                hardness: 1.18,
+                barkColor: '#524b43',
+                barkFurrow: '#2a2520',
+                barkHighlight: '#736a5f',
+                lichenColor: 'rgba(155, 168, 145, 0.30)',
+                heartColor: '#c49d68',
+                heartDark: '#967242',
+                sapColor: '#f3e5cc',
+                grainColor: '#856235',
+                valueMult: 1.15
+            },
+            {
+                name: 'Hard Maple',
+                hardness: 1.28,
+                barkColor: '#4a4542',
+                barkFurrow: '#23201e',
+                barkHighlight: '#6b6460',
+                lichenColor: 'rgba(128, 148, 132, 0.26)',
+                heartColor: '#c89b6e',
+                heartDark: '#9c7148',
+                sapColor: '#f7ead7',
+                grainColor: '#8c613b',
+                valueMult: 1.22
+            }
+        ];
+
+        // --- PROCEDURAL OFFSCREEN WOOD & BARK TEXTURE GENERATOR ---
+        const speciesTextureCache = new Map();
+
+        function getSpeciesTextures(species) {
+            if (speciesTextureCache.has(species.name)) {
+                return speciesTextureCache.get(species.name);
+            }
+
+            // 1. Procedural Bark Furrow Texture (256x128 tileable)
+            const barkCanvas = document.createElement('canvas');
+            barkCanvas.width = 256;
+            barkCanvas.height = 128;
+            const bCtx = barkCanvas.getContext('2d');
+
+            bCtx.fillStyle = species.barkColor;
+            bCtx.fillRect(0, 0, 256, 128);
+
+            // Deep longitudinal bark fissures & highlight ridges
+            for (let row = 0; row < 28; row++) {
+                const baseY = (row / 28) * 128;
+                const phase = row * 1.7;
+                const amp = 1.6 + (row % 3) * 0.7;
+
+                // Dark shadow furrow
+                bCtx.strokeStyle = species.barkFurrow;
+                bCtx.lineWidth = 2.2 + (row % 2);
+                bCtx.beginPath();
+                for (let x = 0; x <= 256; x += 8) {
+                    const wy = baseY + Math.sin((x / 256) * Math.PI * 4 + phase) * amp;
+                    if (x === 0) bCtx.moveTo(x, wy);
+                    else bCtx.lineTo(x, wy);
+                }
+                bCtx.stroke();
+
+                // Lighter scaly bark ridge highlight
+                bCtx.strokeStyle = species.barkHighlight;
+                bCtx.lineWidth = 1.2;
+                bCtx.beginPath();
+                for (let x = 0; x <= 256; x += 8) {
+                    const wy = baseY - 1.6 + Math.sin((x / 256) * Math.PI * 4 + phase + 0.4) * amp;
+                    if (x === 0) bCtx.moveTo(x, wy);
+                    else bCtx.lineTo(x, wy);
+                }
+                bCtx.stroke();
+            }
+
+            // Natural moss/lichen flecks & bark plate cross-cracks
+            for (let i = 0; i < 45; i++) {
+                const lx = (i * 53) % 250;
+                const ly = (i * 29) % 122;
+                bCtx.fillStyle = species.lichenColor;
+                bCtx.beginPath();
+                bCtx.ellipse(lx, ly, 4 + (i % 5), 2 + (i % 3), (i % 4) * 0.4, 0, Math.PI * 2);
+                bCtx.fill();
+
+                bCtx.strokeStyle = 'rgba(15, 12, 10, 0.45)';
+                bCtx.lineWidth = 1;
+                bCtx.beginPath();
+                bCtx.moveTo(lx, ly - 3);
+                bCtx.lineTo(lx + 2, ly + 4);
+                bCtx.stroke();
+            }
+
+            // 2. Procedural Sawn Cathedral Heartwood/Sapwood Grain Texture (256x128 tileable)
+            const woodCanvas = document.createElement('canvas');
+            woodCanvas.width = 256;
+            woodCanvas.height = 128;
+            const wCtx = woodCanvas.getContext('2d');
+
+            // Base heartwood gradient with creamy sapwood edges
+            const grad = wCtx.createLinearGradient(0, 0, 0, 128);
+            grad.addColorStop(0.0, species.sapColor);
+            grad.addColorStop(0.16, species.heartColor);
+            grad.addColorStop(0.50, species.heartDark);
+            grad.addColorStop(0.84, species.heartColor);
+            grad.addColorStop(1.0, species.sapColor);
+            wCtx.fillStyle = grad;
+            wCtx.fillRect(0, 0, 256, 128);
+
+            // Longitudinal wavy grain & cathedral arches
+            wCtx.strokeStyle = species.grainColor;
+            wCtx.globalAlpha = 0.36;
+            for (let g = 0; g < 34; g++) {
+                const gy = (g / 34) * 128;
+                const distFromCenter = Math.abs(gy - 64) / 64;
+                wCtx.lineWidth = distFromCenter < 0.3 ? 1.5 : 0.9;
+                wCtx.beginPath();
+                for (let x = 0; x <= 256; x += 6) {
+                    const cathedralWave = Math.sin((x / 256) * Math.PI * 2 + g * 0.35) * (4.5 * (1 - distFromCenter * 0.6));
+                    const fineRipple = Math.sin((x / 256) * Math.PI * 10 + g) * 0.7;
+                    const y = gy + cathedralWave + fineRipple;
+                    if (x === 0) wCtx.moveTo(x, y);
+                    else wCtx.lineTo(x, y);
+                }
+                wCtx.stroke();
+            }
+
+            // Fine wood vessel pores / medullary flecks
+            wCtx.fillStyle = species.heartDark;
+            wCtx.globalAlpha = 0.25;
+            for (let p = 0; p < 140; p++) {
+                const px = (p * 37) % 252;
+                const py = (p * 19) % 126;
+                wCtx.fillRect(px, py, 6 + (p % 8), 0.9);
+            }
+            wCtx.globalAlpha = 1.0;
+
+            const bundle = {
+                barkPattern: bCtx.createPattern(barkCanvas, 'repeat'),
+                woodPattern: wCtx.createPattern(woodCanvas, 'repeat')
+            };
+            speciesTextureCache.set(species.name, bundle);
+            return bundle;
+        }
+
+        const ORDER_TEMPLATES = [
+            { title: 'Heavy 2×10 Lowboy Decking', desc: 'Square a heavy log to 10" height, then slice 2" thick planks.', targetThick: 2.0, targetWidth: 10.0, qty: 6, payout: 340 },
+            { title: '1×8 Barn Siding & Sheathing', desc: 'Square a cant to 8" height, then slice 1" boards.', targetThick: 1.0, targetWidth: 8.0, qty: 8, payout: 280 },
+            { title: '4×6 Structural Framing Timbers', desc: 'Mill heavy 4" thick × 6" wide hardwood beams.', targetThick: 4.0, targetWidth: 6.0, qty: 4, payout: 360 },
+            { title: '2×12 Bridge Plank Stock', desc: 'Requires a large log squared to 12" height, sliced 2" thick.', targetThick: 2.0, targetWidth: 12.0, qty: 5, payout: 420 }
+        ];
+
+        // --- SIMULATION STATE ---
+        const state = {
+            // Engine & Blade
+            rpm: 2100,
+            maxRpm: 2150,
+            bladeAngle: 0,
+            bladeTemp: 112,
+            stalled: false,
+
+            // Carriage & Setworks
+            carriagePosFt: 1.5,     // 0 to 28 ft (Log nose enters blade around 15.5 - logLength)
+            feedLever: 0,           // -100 to +100
+            feedVelocityFt: 0,      // ft/sec
+            kneeDistFromBlade: 24,  // inches from saw laser line to knee face (0 to 42")
+            dogsClamped: false,
+            topSawEngaged: true,    // 36" overhead top saw engaged for oversized logs
+            turnerAnim: 0,          // 0 to 1 animation timer for hydraulic turner arm
+            loadAnim: 0,            // 0 to 1 animation timer for log loader
+
+            // Current Log on Carriage
+            // Cross-section is modeled as a 2D convex polygon in log-local coordinates
+            log: null,
+            nextLogSpec: null,
+
+            // Cut State & Telemetry
+            isCutting: false,
+            cutProgress: 0,
+            cutCompletedThisPass: false,
+            totalBoardFeet: 0,
+            totalGoodCuIn: 0,
+            totalWasteCuIn: 0,
+            cash: 0,
+            orderNum: 101,
+            order: null,
+            orderCompletedCount: 0,
+            recentCuts: [],
+            conveyorItems: [],
+            sawdust: []
+        };
+
+        function generateNextLogSpec() {
+            const species = WOOD_SPECIES[Math.floor(Math.random() * WOOD_SPECIES.length)];
+            // Generate organic, non-uniform log diameters between 18.2" and 40.0" (to 0.1" precision)
+            const rawDiam = 18.2 + Math.random() * 21.8;
+            const diameter = +rawDiam.toFixed(1);
+            const lengths = [10, 12, 14, 16];
+            const lengthFt = lengths[Math.floor(Math.random() * lengths.length)];
+            return { species, diameter, lengthFt };
+        }
+
+        // --- 2D POLYGON LOG CROSS-SECTION GEOMETRY ENGINE ---
+        // Supports arbitrary 1/8-turn (45°) and 1/4-turn (90°) rotations and flat chord slicing!
+        function createCirclePolygon(radius, segments = 64) {
+            const pts = [];
+            // Slight organic ovality and natural bark/trunk undulation
+            const ovalX = 0.96 + Math.random() * 0.08;
+            const ovalY = 0.96 + Math.random() * 0.08;
+            const phase1 = Math.random() * Math.PI * 2;
+            const phase2 = Math.random() * Math.PI * 2;
+            const lobeAmp1 = radius * (0.012 + Math.random() * 0.016);
+            const lobeAmp2 = radius * (0.006 + Math.random() * 0.01);
+
+            for (let i = 0; i < segments; i++) {
+                const theta = (i / segments) * Math.PI * 2;
+                const localR = radius + Math.sin(theta * 2 + phase1) * lobeAmp1 + Math.cos(theta * 3 + phase2) * lobeAmp2;
+                pts.push({
+                    x: Math.cos(theta) * localR * ovalX,
+                    y: Math.sin(theta) * localR * ovalY
+                });
+            }
+            return pts;
+        }
+
+        function createLogFromSpec(spec) {
+            const r = spec.diameter / 2;
+            const poly = createCirclePolygon(r, 64);
+            // Tag every initial perimeter edge as natural rough bark ('bark')
+            const edgeTypes = poly.map(() => 'bark');
+
+            // Generate 2-4 natural branch knots along the trunk for top-down realism
+            const knotCount = 2 + Math.floor(Math.random() * 3);
+            const knots = [];
+            for (let k = 0; k < knotCount; k++) {
+                knots.push({
+                    u: 0.14 + Math.random() * 0.72, // longitudinal fraction along log
+                    v: 0.20 + Math.random() * 0.60, // lateral fraction across trunk
+                    rx: 0.022 + Math.random() * 0.018,
+                    ry: 0.055 + Math.random() * 0.045,
+                    angle: (Math.random() - 0.5) * 0.5
+                });
+            }
+
+            // Generate natural end-grain radial drying checks (heartwood splits) and ring wobble seed
+            const checkCount = 2 + Math.floor(Math.random() * 3);
+            const radialChecks = [];
+            for (let c = 0; c < checkCount; c++) {
+                radialChecks.push({
+                    angle: (c / checkCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.9,
+                    lengthRatio: 0.28 + Math.random() * 0.34,
+                    width: 1.0 + Math.random() * 1.1
+                });
+            }
+
+            return {
+                species: spec.species,
+                diameter: spec.diameter,
+                radius: r,
+                lengthFt: spec.lengthFt,
+                poly,
+                edgeTypes,
+                knots,
+                radialChecks,
+                ringPhase: Math.random() * Math.PI * 2,
+                rotationDeg: 0
+            };
+        }
+
+        // Rotate polygon vertices clockwise by angleDeg (in screen/end-grain space: +X right toward blade, -Y up)
+        function rotatePolygon(poly, angleDeg) {
+            const rad = (angleDeg * Math.PI) / 180;
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
+            return poly.map(p => ({
+                x: p.x * cos - p.y * sin,
+                y: p.x * sin + p.y * cos
+            }));
+        }
+
+        // Sutherland-Hodgman half-plane clip keeping vertices with x <= clipX while preserving bark vs sawn edge tags
+        function clipPolygonWithEdges(poly, edgeTypes, clipX) {
+            if (!poly || poly.length === 0) return { poly: [], edgeTypes: [] };
+            const outPoly = [];
+            const outEdges = [];
+            const n = poly.length;
+
+            for (let i = 0; i < n; i++) {
+                const prevIdx = (i + n - 1) % n;
+                const curr = poly[i];
+                const prev = poly[prevIdx];
+                const prevEdgeType = (edgeTypes && edgeTypes[prevIdx]) || 'bark';
+
+                const currIn = curr.x <= clipX;
+                const prevIn = prev.x <= clipX;
+
+                if (currIn !== prevIn) {
+                    const t = (clipX - prev.x) / (curr.x - prev.x);
+                    const interPt = {
+                        x: clipX,
+                        y: prev.y + t * (curr.y - prev.y)
+                    };
+                    outPoly.push(interPt);
+                    // If exiting the kept half-plane (prevIn -> !currIn), the next segment along clipX is freshly 'sawn'
+                    // If entering the kept half-plane (!prevIn -> currIn), the segment from interPt to curr retains prevEdgeType
+                    outEdges.push(prevIn ? 'sawn' : prevEdgeType);
+                }
+
+                if (currIn) {
+                    outPoly.push({ x: curr.x, y: curr.y });
+                    outEdges.push((edgeTypes && edgeTypes[i]) || 'bark');
+                }
+            }
+            return { poly: outPoly, edgeTypes: outEdges };
+        }
+
+        function getPolyBounds(poly) {
+            if (!poly || poly.length === 0) {
+                return { minX: 0, maxX: 0, minY: 0, maxY: 0, width: 0, height: 0 };
+            }
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            for (const p of poly) {
+                if (p.x < minX) minX = p.x;
+                if (p.x > maxX) maxX = p.x;
+                if (p.y < minY) minY = p.y;
+                if (p.y > maxY) maxY = p.y;
+            }
+            return {
+                minX,
+                maxX,
+                minY,
+                maxY,
+                width: +(maxX - minX).toFixed(2),
+                height: +(maxY - minY).toFixed(2)
+            };
+        }
+
+        // Compute horizontal width (X) and vertical height (Y) of the log cross-section
+        function getLogDimensions(log) {
+            if (!log) return { width: 0, height: 0 };
+            return getPolyBounds(log.poly);
+        }
+
+        // Exact polygon area via Shoelace formula
+        function computePolygonArea(poly) {
+            if (!poly || poly.length < 3) return 0;
+            let area = 0;
+            for (let i = 0; i < poly.length; i++) {
+                const j = (i + 1) % poly.length;
+                area += poly[i].x * poly[j].y;
+                area -= poly[j].x * poly[i].y;
+            }
+            return Math.abs(area) / 2;
+        }
+
+        // Count how many flat sawn chord edges (>= 2.2" long) the polygon currently has
+        function countFlatFaces(poly, edgeTypes = null) {
+            if (!poly || poly.length < 3) return 0;
+            let flatCount = 0;
+            for (let i = 0; i < poly.length; i++) {
+                const a = poly[i];
+                const b = poly[(i + 1) % poly.length];
+                const edgeLen = Math.hypot(b.x - a.x, b.y - a.y);
+                const isSawn = !edgeTypes || edgeTypes[i] === 'sawn';
+                if (isSawn && edgeLen >= 2.2) flatCount++;
+            }
+            return flatCount;
+        }
+
+        // Check if the top/bottom/right edges have been flattened into a squared cant
+        function isLogSquaredCant(poly, edgeTypes = null) {
+            return countFlatFaces(poly, edgeTypes) >= 3;
+        }
+
+        // --- UI NOTIFICATION TOAST ---
+        let toastTimeout = null;
+        function showToast(msg, type = 'amber') {
+            const el = document.getElementById('sawyer-toast');
+            el.textContent = msg;
+            el.className = `pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg bg-slate-900/95 border font-display text-sm font-semibold shadow-2xl transition-opacity duration-200 text-center max-w-[90%] ${
+                type === 'red' ? 'border-rose-500 text-rose-300' :
+                type === 'green' ? 'border-emerald-500 text-emerald-300' :
+                'border-amber-500 text-amber-300'
+            }`;
+            el.style.opacity = '1';
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                el.style.opacity = '0';
+            }, 2600);
+        }
+
+        // --- ORDER MANAGEMENT ---
+        function assignNewOrder() {
+            const tpl = ORDER_TEMPLATES[Math.floor(Math.random() * ORDER_TEMPLATES.length)];
+            state.order = { ...tpl };
+            state.orderCompletedCount = 0;
+            updateOrderUI();
+        }
+
+        function updateOrderUI() {
+            if (!state.order) return;
+            document.getElementById('order-number').textContent = `ORD #${state.orderNum}`;
+            document.getElementById('order-title').textContent = state.order.title;
+            document.getElementById('order-desc').textContent = state.order.desc;
+            document.getElementById('order-payout').textContent = `$${state.order.payout}`;
+            document.getElementById('order-spec-text').textContent = `${state.order.targetThick.toFixed(1)}" × ${state.order.targetWidth.toFixed(1)}"`;
+            document.getElementById('order-progress-count').textContent = `${state.orderCompletedCount} / ${state.order.qty} pcs`;
+            const pct = Math.min(100, (state.orderCompletedCount / state.order.qty) * 100);
+            document.getElementById('order-progress-bar').style.width = `${pct}%`;
+        }
+
+        // --- SAWMILL ACTIONS ---
+        function loadLogOntoCarriage() {
+            if (state.log) {
+                showToast('Carriage already has a log! Mill it or dump remainder first.', 'red');
+                return;
+            }
+            if (state.carriagePosFt > 4.0) {
+                showToast('Return carriage to HOME position before loading a log!', 'red');
+                return;
+            }
+            const spec = state.nextLogSpec;
+            state.log = createLogFromSpec(spec);
+            state.nextLogSpec = generateNextLogSpec();
+            state.dogsClamped = false;
+            state.loadAnim = 1.0;
+
+            // Retract knees automatically to fit the log diameter cleanly
+            state.kneeDistFromBlade = Math.min(MAX_KNEE_OPENING, Math.ceil(spec.diameter + 0.5));
+
+            // Automatically engage overhead Top Saw if log exceeds 26" main blade capacity
+            if (spec.diameter > MAX_MAIN_CUT_HEIGHT && !state.topSawEngaged) {
+                state.topSawEngaged = true;
+            }
+
+            audio.playHydraulicClunk(115);
+            showToast(`Loaded ${spec.diameter}" × ${spec.lengthFt}' ${spec.species.name}! Use Nibble 0.25" + 1/8 Turn to reduce.`, 'green');
+            updateHUD();
+        }
+
+        function queueOversized40Log() {
+            state.nextLogSpec = {
+                species: WOOD_SPECIES[0], // Heavy Pignut Hickory
+                diameter: 40,
+                lengthFt: 12
+            };
+            audio.playHydraulicClunk(150);
+            showToast('Queued 40" Oversized Pignut Hickory log on deck! Click Load [L].', 'amber');
+            updateHUD();
+        }
+
+        function toggleTopSaw() {
+            if (state.isCutting) {
+                showToast('Cannot raise/lower Top Saw mid-cut!', 'red');
+                return;
+            }
+            state.topSawEngaged = !state.topSawEngaged;
+            audio.playHydraulicClunk(state.topSawEngaged ? 175 : 130);
+            showToast(
+                state.topSawEngaged
+                    ? '36" Overhead TOP SAW ENGAGED (42" Max Cut Height)'
+                    : 'Overhead Top Saw DISENGAGED (26" Main Blade Limit)',
+                state.topSawEngaged ? 'green' : 'amber'
+            );
+            updateHUD();
+        }
+        function turnLogByAngle(angleDeg) {
+            if (!state.log) {
+                showToast('Load a log first before using the hydraulic turner.', 'amber');
+                return;
+            }
+            if (state.dogsClamped) {
+                showToast('Unclamp Tong Dogs [SPACE] before spinning the log!', 'red');
+                return;
+            }
+            if (state.isCutting || state.carriagePosFt > 5.0) {
+                showToast('Return carriage to loading zone before turning log.', 'red');
+                return;
+            }
+
+            state.log.poly = rotatePolygon(state.log.poly, angleDeg);
+            state.log.rotationDeg = (state.log.rotationDeg + angleDeg) % 360;
+            state.turnerAnim = 1.0;
+
+            // Ensure knees retract enough so the rotated log rests against the knee without clipping
+            const dims = getLogDimensions(state.log);
+            if (state.kneeDistFromBlade < dims.width) {
+                state.kneeDistFromBlade = Math.min(MAX_KNEE_OPENING, +(dims.width + 0.25).toFixed(2));
+            }
+
+            const eighths = Math.round(state.log.rotationDeg / 45);
+            const turnLabel = angleDeg === 45 ? '1/8 turn (45°)' : '1/4 turn (90°)';
+            audio.playHydraulicClunk(angleDeg === 45 ? 148 : 135);
+            showToast(`Spun log ${turnLabel} [${eighths}/8] — Span: ${dims.width.toFixed(1)}" W × ${dims.height.toFixed(1)}" H`, 'amber');
+            updateHUD();
+        }
+
+        function turnLog90() {
+            turnLogByAngle(90);
+        }
+
+        function turnLogEighth() {
+            turnLogByAngle(45);
+        }
+        function setPresetNibble() {
+            if (!state.log) {
+                showToast('Load a log first.', 'amber');
+                return;
+            }
+            if (state.isCutting) return;
+            const dims = getLogDimensions(state.log);
+            // Position knee so a tiny 0.25" sliver (plus 0.25" kerf = 0.50" total bite) protrudes past the laser line
+            const targetKnee = Math.max(2.0, +(dims.width - 0.25 - KERF).toFixed(2));
+            state.kneeDistFromBlade = Math.min(MAX_KNEE_OPENING, targetKnee);
+            audio.playHydraulicClunk(215);
+            showToast('Setworks set to NIBBLE 0.25" sliver — feed cut, then spin 1/8 turn [E]!', 'amber');
+            updateHUD();
+        }
+
+        function toggleDogs() {
+            if (!state.log) {
+                showToast('Load a log onto the carriage before clamping dogs.', 'amber');
+                return;
+            }
+            if (state.isCutting) {
+                showToast('Cannot release dogs while blade is in the cut!', 'red');
+                return;
+            }
+            state.dogsClamped = !state.dogsClamped;
+            audio.playHydraulicClunk(state.dogsClamped ? 165 : 120);
+            showToast(
+                state.dogsClamped ? 'Hydraulic Tong Dogs CLAMPED into log!' : 'Tong Dogs RELEASED — safe to turn or adjust log.',
+                state.dogsClamped ? 'green' : 'amber'
+            );
+            updateHUD();
+        }
+
+        function adjustSetworks(deltaInches) {
+            if (state.isCutting) {
+                showToast('Cannot shift setworks mid-cut!', 'red');
+                return;
+            }
+            let target = +(state.kneeDistFromBlade + deltaInches).toFixed(2);
+            target = Math.max(1.0, Math.min(MAX_KNEE_OPENING, target));
+
+            // If log is dogged, moving the knee shifts the log toward/away from blade
+            state.kneeDistFromBlade = target;
+            audio.playHydraulicClunk(195);
+            updateHUD();
+        }
+
+        function setPresetSkimSlab() {
+            if (!state.log) {
+                showToast('Load a log first.', 'amber');
+                return;
+            }
+            if (state.isCutting) return;
+            const dims = getLogDimensions(state.log);
+            // Position knee so ~1.75 inches of outer bark/slab protrudes past the laser line
+            const targetKnee = Math.max(2.0, +(dims.width - 1.75).toFixed(2));
+            state.kneeDistFromBlade = Math.min(MAX_KNEE_OPENING, targetKnee);
+            audio.playHydraulicClunk(210);
+            showToast('Setworks positioned for opening slab skim cut.', 'amber');
+            updateHUD();
+        }
+
+        function setPresetBoardCut(boardThickness) {
+            if (!state.log) {
+                showToast('Load a log first.', 'amber');
+                return;
+            }
+            if (state.isCutting) return;
+            const dims = getLogDimensions(state.log);
+            // Advance knee inward by (boardThickness + KERF) from current log width
+            const targetKnee = +(dims.width - boardThickness - KERF).toFixed(2);
+            if (targetKnee < 1.0) {
+                showToast('Log is too thin for that cut!', 'red');
+                return;
+            }
+            state.kneeDistFromBlade = targetKnee;
+            audio.playHydraulicClunk(220);
+            showToast(`Setworks advanced for ${boardThickness}" board (+${KERF}" kerf).`, 'green');
+            updateHUD();
+        }
+
+        function dumpRemainder() {
+            if (!state.log) return;
+            if (state.isCutting) {
+                showToast('Finish or back out of the cut first!', 'red');
+                return;
+            }
+            const remArea = computePolygonArea(state.log.poly);
+            state.totalWasteCuIn += remArea * state.log.lengthFt * 12;
+            state.log = null;
+            state.dogsClamped = false;
+            setFeedLever(0);
+            state.carriagePosFt = 1.5;
+            audio.playBoardDrop();
+            showToast('Dumped remaining cant/slab to chipper conveyor.', 'amber');
+            updateHUD();
+        }
+
+        function setFeedLever(val) {
+            const clamped = Math.max(-100, Math.min(100, Math.round(val)));
+            state.feedLever = clamped;
+            document.getElementById('feed-lever').value = clamped;
+        }
+
+        // --- COMPLETE A BOARD / SLAB CUT ---
+        function completeCutPass() {
+            const log = state.log;
+            if (!log) return;
+
+            const bounds = getPolyBounds(log.poly);
+            // How much protrudes past the saw line (X > 0)?
+            const overhang = bounds.width - state.kneeDistFromBlade;
+            if (overhang <= KERF) return;
+
+            const boardThickness = +(overhang - KERF).toFixed(2);
+            const boardHeight = +bounds.height.toFixed(2);
+            const lengthFt = log.lengthFt;
+
+            const wasSquared = isLogSquaredCant(log.poly, log.edgeTypes);
+
+            // Clip the log polygon along the saw kerf plane:
+            // Leftmost vertex sits at knee (-state.kneeDistFromBlade), saw cuts at x = 0,
+            // so in local polygon coordinates we keep x <= bounds.minX + state.kneeDistFromBlade
+            const oldArea = computePolygonArea(log.poly);
+            const clipLocalX = bounds.minX + state.kneeDistFromBlade;
+            const clipped = clipPolygonWithEdges(log.poly, log.edgeTypes, clipLocalX);
+            log.poly = clipped.poly;
+            log.edgeTypes = clipped.edgeTypes;
+            const newArea = computePolygonArea(log.poly);
+            const removedCuIn = Math.max(0, (oldArea - newArea) * lengthFt * 12);
+
+            // Determine if this piece is a bark nibble/slab or usable dimensional lumber
+            const isSlab = (!wasSquared || boardThickness < 0.85);
+
+            // Board-feet formula: (Thickness_in * Width_in * Length_ft) / 12
+            const bf = +((boardThickness * boardHeight * lengthFt) / 12).toFixed(1);
+
+            if (isSlab) {
+                state.totalWasteCuIn += removedCuIn;
+                const label = boardThickness <= 1.0 ? `Nibble (${boardThickness.toFixed(2)}")` : `Slab (${boardThickness.toFixed(1)}" bark)`;
+                addRecentCutTag(label, 'slab');
+                showToast(`Nibbled ${boardThickness.toFixed(2)}" bark sliver — unclamp [SPC] & spin 1/8 turn [E]!`, 'amber');
+            } else {
+                state.totalBoardFeet = +(state.totalBoardFeet + bf).toFixed(1);
+                state.totalGoodCuIn += boardThickness * boardHeight * lengthFt * 12;
+
+                // Check against active customer order (within ±0.30" tolerance)
+                const thickDiff = Math.abs(boardThickness - state.order.targetThick);
+                const widthDiff = Math.abs(boardHeight - state.order.targetWidth);
+                const matchesOrder = (thickDiff <= 0.30 && widthDiff <= 0.35);
+
+                if (matchesOrder) {
+                    state.orderCompletedCount++;
+                    const pieceBonus = Math.round((state.order.payout / state.order.qty) * log.species.valueMult);
+                    state.cash += pieceBonus;
+                    addRecentCutTag(`${boardThickness.toFixed(1)}×${boardHeight.toFixed(1)}" ★`, 'match');
+                    showToast(`ORDER MATCH! ${boardThickness.toFixed(1)}"×${boardHeight.toFixed(1)}" (${bf} BF) +$${pieceBonus}`, 'green');
+
+                    if (state.orderCompletedCount >= state.order.qty) {
+                        const completionBonus = 100;
+                        state.cash += completionBonus;
+                        audio.playChaChing();
+                        showToast(`ORDER #${state.orderNum} COMPLETE! +$${completionBonus} Bonus!`, 'green');
+                        state.orderNum++;
+                        assignNewOrder();
+                    } else {
+                        updateOrderUI();
+                    }
+                } else {
+                    const marketVal = Math.max(8, Math.round(bf * 1.4));
+                    state.cash += marketVal;
+                    addRecentCutTag(`${boardThickness.toFixed(1)}×${boardHeight.toFixed(1)}"`, 'board');
+                    showToast(`Milled ${boardThickness.toFixed(1)}"×${boardHeight.toFixed(1)}" board (${bf} BF) +$${marketVal}`, 'amber');
+                }
+            }
+
+            // Spawn board/slab onto off-bearing roller conveyor
+            state.conveyorItems.push({
+                xFt: BLADE_Z_FT,
+                lengthFt: lengthFt,
+                thickness: Math.max(0.6, boardThickness),
+                isSlab: isSlab,
+                color: isSlab ? log.species.barkColor : log.species.heartColor
+            });
+
+            audio.playBoardDrop();
+
+            // If remaining log is too thin (< 1.2"), evaluate whether the final piece meets order specs (±0.25")
+            const remDims = getLogDimensions(log);
+            if (remDims.width < 1.2) {
+                const remThick = +remDims.width.toFixed(2);
+                const remHeight = +remDims.height.toFixed(2);
+                const thickDiff = Math.abs(remThick - state.order.targetThick);
+                const widthDiff = Math.abs(remHeight - state.order.targetWidth);
+
+                if (wasSquared && thickDiff <= 0.25 && widthDiff <= 0.25) {
+                    const remBf = +((remThick * remHeight * lengthFt) / 12).toFixed(1);
+                    state.totalBoardFeet = +(state.totalBoardFeet + remBf).toFixed(1);
+                    state.totalGoodCuIn += remThick * remHeight * lengthFt * 12;
+                    state.orderCompletedCount += 1;
+
+                    const pieceBonus = Math.round((state.order.payout / state.order.qty) * log.species.valueMult);
+                    state.cash += pieceBonus;
+                    addRecentCutTag(`${remThick.toFixed(1)}×${remHeight.toFixed(1)}" ★`, 'match');
+
+                    state.conveyorItems.push({
+                        xFt: BLADE_Z_FT + 1.2,
+                        lengthFt: lengthFt,
+                        thickness: Math.max(0.6, remThick),
+                        isSlab: false,
+                        color: log.species.heartColor
+                    });
+
+                    if (state.orderCompletedCount >= state.order.qty) {
+                        const completionBonus = 100;
+                        state.cash += completionBonus;
+                        audio.playChaChing();
+                        showToast(`FINAL PIECE MATCHED! ORDER #${state.orderNum} COMPLETE! +$${completionBonus} Bonus!`, 'green');
+                        state.orderNum++;
+                        assignNewOrder();
+                    } else {
+                        updateOrderUI();
+                        showToast(`Final piece matched spec (±0.25")! +1 pc (${state.orderCompletedCount}/${state.order.qty})`, 'green');
+                    }
+                } else {
+                    const remArea = computePolygonArea(log.poly);
+                    state.totalWasteCuIn += remArea * lengthFt * 12;
+                    showToast('Final board sawn! Bunk is clear for next log.', 'green');
+                }
+
+                state.log = null;
+                state.dogsClamped = false;
+            }
+        }
+
+        function addRecentCutTag(label, kind) {
+            state.recentCuts.unshift({ label, kind });
+            if (state.recentCuts.length > 6) state.recentCuts.pop();
+            const container = document.getElementById('recent-cuts-list');
+            container.innerHTML = state.recentCuts.map(item => {
+                const cls = item.kind === 'match'
+                    ? 'bg-emerald-950/90 text-emerald-300 border-emerald-600/60'
+                    : item.kind === 'slab'
+                    ? 'bg-slate-800 text-slate-400 border-slate-700'
+                    : 'bg-amber-950/80 text-amber-300 border-amber-700/50';
+                return `<span class="text-[11px] font-mono-tech px-2 py-0.5 rounded border ${cls}">${item.label}</span>`;
+            }).join('');
+        }
+
+        // --- PHYSICS & SIMULATION STEP ---
+        function updateSimulation(dt) {
+            // Decay hydraulic animations
+            if (state.turnerAnim > 0) state.turnerAnim = Math.max(0, state.turnerAnim - dt * 2.2);
+            if (state.loadAnim > 0) state.loadAnim = Math.max(0, state.loadAnim - dt * 2.0);
+
+            // Target carriage velocity from feed lever (-100..100)
+            // Deadzone around 0 (-6..+6)
+            let leverNorm = 0;
+            if (Math.abs(state.feedLever) > 6) {
+                leverNorm = (state.feedLever - Math.sign(state.feedLever) * 6) / 94;
+            }
+
+            // Forward max ~ 5.89 ft/s (+7%), Reverse return max ~ 11.77 ft/s (+7%)
+            const targetVel = leverNorm >= 0 ? leverNorm * (5.5 * 1.07) : leverNorm * (11.0 * 1.07);
+            state.feedVelocityFt += (targetVel - state.feedVelocityFt) * Math.min(1, dt * 8);
+
+            // Move carriage along track
+            state.carriagePosFt += state.feedVelocityFt * dt;
+
+            // Track end stops
+            if (state.carriagePosFt <= 0.5) {
+                state.carriagePosFt = 0.5;
+                if (state.feedVelocityFt < 0) {
+                    state.feedVelocityFt = 0;
+                    setFeedLever(0);
+                }
+            }
+            if (state.carriagePosFt >= CARRIAGE_TRAVEL_FT) {
+                state.carriagePosFt = CARRIAGE_TRAVEL_FT;
+                if (state.feedVelocityFt > 0) {
+                    state.feedVelocityFt = 0;
+                    setFeedLever(0);
+                }
+            }
+            // Check log interaction with the 60" circular blade (+ optional 36" Top Saw) at BLADE_Z_FT
+            let activeCutting = false;
+            let cutHeight = 0;
+            let overhang = 0;
+            const activeMaxCutHeight = state.topSawEngaged ? MAX_TOP_SAW_HEIGHT : MAX_MAIN_CUT_HEIGHT;
+
+            if (state.log) {
+                const logNoseFt = state.carriagePosFt + state.log.lengthFt;
+                const logTailFt = state.carriagePosFt;
+                const dims = getLogDimensions(state.log);
+                overhang = +(dims.width - state.kneeDistFromBlade).toFixed(2);
+                cutHeight = dims.height;
+
+                // Is the log longitudinally overlapping the saw blade?
+                if (logNoseFt > BLADE_Z_FT && logTailFt < BLADE_Z_FT && overhang > 0.05) {
+                    // Safety Check 1: Are dogs clamped?
+                    if (!state.dogsClamped && state.feedVelocityFt > 0.2) {
+                        setFeedLever(0);
+                        state.feedVelocityFt = -1.5;
+                        audio.playHydraulicClunk(90);
+                        showToast('DANGER! Log was NOT dogged and kicked back! Clamp Dogs [SPACE] first.', 'red');
+                    }
+                    // Safety Check 2: Does cut height exceed active blade reach (26" main or 42" with top saw)?
+                    else if (cutHeight > activeMaxCutHeight && state.feedVelocityFt > 0.1) {
+                        setFeedLever(0);
+                        state.feedVelocityFt = -0.8;
+                        audio.playHydraulicClunk(85);
+                        showToast(`Log height (${cutHeight.toFixed(1)}") exceeds ${activeMaxCutHeight}" reach! Engage Top Saw [T] or nibble smaller corners.`, 'red');
+                    }
+                    // Valid Sawing Cut!
+                    else if (state.feedVelocityFt > 0.05) {
+                        activeCutting = true;
+                        state.cutProgress = Math.min(1, (logNoseFt - BLADE_Z_FT) / state.log.lengthFt);
+
+                        // Spawn sawdust particles at blade kerf
+                        spawnSawdust(cutHeight, state.feedVelocityFt);
+                    }
+                }
+
+                // Trigger cut completion once the log's tail clears past the blade
+                if (logTailFt >= BLADE_Z_FT && overhang > KERF && !state.cutCompletedThisPass) {
+                    state.cutCompletedThisPass = true;
+                    completeCutPass();
+                }
+
+                // Reset pass completion flag when carriage returns before the blade
+                if (logNoseFt < BLADE_Z_FT - 0.3) {
+                    state.cutCompletedThisPass = false;
+                    state.cutProgress = 0;
+                }
+            }
+
+            state.isCutting = activeCutting;
+
+            // --- DETROIT DIESEL 6-71 RPM & BLADE THERMAL MODEL ---
+            if (activeCutting && state.log) {
+                // Load depends on cut height (depth in wood), feed speed, and wood hardness
+                const depthRatio = cutHeight / MAX_TOP_SAW_HEIGHT;
+                const loadFactor = depthRatio * (state.feedVelocityFt / 3.2) * state.log.species.hardness;
+                const targetCutRpm = Math.max(950, state.maxRpm - loadFactor * 720);
+                state.rpm += (targetCutRpm - state.rpm) * Math.min(1, dt * 3.5);
+                state.bladeTemp = Math.min(260, state.bladeTemp + loadFactor * 14 * dt);
+
+                // If sawyer pushes too hard and bogs engine below 1180 RPM, auto-throttle warning
+                if (state.rpm < 1180) {
+                    showToast('ENGINE BOGGING! Ease back on the Carriage Feed Lever!', 'red');
+                    state.feedVelocityFt *= 0.85;
+                }
+            } else {
+                // Governor recovers engine back to 2100 RPM idle/high-idle
+                state.rpm += (2100 - state.rpm) * Math.min(1, dt * 2.8);
+                state.bladeTemp = Math.max(110, state.bladeTemp - 6 * dt);
+            }
+
+            // Spin 60" circular saw blade proportional to RPM
+            const rps = (state.rpm / 60) * 0.45; // Visual stroboscopic rotation speed
+            state.bladeAngle = (state.bladeAngle + rps * Math.PI * 2 * dt) % (Math.PI * 2);
+
+            // Update off-bearing live roller conveyor items
+            for (let i = state.conveyorItems.length - 1; i >= 0; i--) {
+                state.conveyorItems[i].xFt += 4.8 * dt;
+                if (state.conveyorItems[i].xFt > CARRIAGE_TRAVEL_FT + 16) {
+                    state.conveyorItems.splice(i, 1);
+                }
+            }
+
+            // Update sawdust particles
+            for (let i = state.sawdust.length - 1; i >= 0; i--) {
+                const p = state.sawdust[i];
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                p.life -= dt;
+                if (p.life <= 0) state.sawdust.splice(i, 1);
+            }
+
+            // Update synthesized Web Audio
+            audio.update(state.rpm, activeCutting, cutHeight / MAX_TOP_SAW_HEIGHT, state.feedVelocityFt);
+        }
+
+        function spawnSawdust(cutHeight, feedSpeed) {
+            const count = Math.min(6, Math.ceil(feedSpeed * 1.4));
+            for (let i = 0; i < count; i++) {
+                state.sawdust.push({
+                    x: (Math.random() - 0.5) * 14,
+                    y: (Math.random() - 0.5) * 10,
+                    vx: 35 + Math.random() * 75,
+                    vy: (Math.random() - 0.5) * 48,
+                    size: 1.5 + Math.random() * 2.5,
+                    life: 0.45 + Math.random() * 0.45,
+                    color: Math.random() > 0.35 ? '#d6a874' : '#b07d48'
+                });
+            }
+        }
+
+        // --- HUD DOM SYNC ---
+        function updateHUD() {
+            // RPM & Temp
+            const rpmInt = Math.round(state.rpm);
+            const rpmEl = document.getElementById('rpm-text');
+            const rpmBar = document.getElementById('rpm-bar');
+            rpmEl.textContent = `${rpmInt} RPM`;
+            const rpmPct = Math.max(10, Math.min(100, ((rpmInt - 900) / 1250) * 100));
+            rpmBar.style.width = `${rpmPct}%`;
+
+            if (rpmInt < 1300) {
+                rpmEl.className = 'font-mono-tech text-rose-400 font-bold';
+                rpmBar.className = 'h-full bg-rose-500 transition-all duration-75';
+            } else if (rpmInt < 1650) {
+                rpmEl.className = 'font-mono-tech text-amber-400 font-bold';
+                rpmBar.className = 'h-full bg-amber-500 transition-all duration-75';
+            } else {
+                rpmEl.className = 'font-mono-tech text-emerald-400 font-bold';
+                rpmBar.className = 'h-full bg-emerald-500 transition-all duration-75';
+            }
+
+            document.getElementById('temp-text').textContent = `${Math.round(state.bladeTemp)}°F`;
+
+            // Production Totals
+            document.getElementById('bf-total').textContent = `${state.totalBoardFeet.toFixed(1)} BF`;
+            document.getElementById('cash-total').textContent = `$${state.cash}`;
+            const totalVol = state.totalGoodCuIn + state.totalWasteCuIn;
+            const wastePct = totalVol > 0 ? Math.round((state.totalWasteCuIn / totalVol) * 100) : 0;
+            document.getElementById('waste-ratio').textContent = `${wastePct}%`;
+
+            // Carriage & Dogs
+            const posLabel = state.carriagePosFt <= 1.8 ? `HOME (${state.carriagePosFt.toFixed(1)} ft)` : `${state.carriagePosFt.toFixed(1)} ft`;
+            document.getElementById('carriage-pos-readout').textContent = posLabel;
+
+            const dogBadge = document.getElementById('dog-status-badge');
+            const dogBtn = document.getElementById('btn-toggle-dogs');
+            const dogBtnLbl = document.getElementById('btn-dogs-label');
+            if (state.dogsClamped) {
+                dogBadge.textContent = 'CLAMPED';
+                dogBadge.className = 'text-emerald-400';
+                dogBtn.className = 'mill-btn bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-1 rounded-lg text-[11px] flex flex-col items-center justify-center gap-0.5';
+                dogBtnLbl.textContent = '🔓 Release';
+            } else {
+                dogBadge.textContent = 'UNCLAMPED';
+                dogBadge.className = 'text-rose-400';
+                dogBtn.className = 'mill-btn bg-rose-700 hover:bg-rose-600 text-white font-bold py-2 px-1 rounded-lg text-[11px] flex flex-col items-center justify-center gap-0.5';
+                dogBtnLbl.textContent = '🔒 Dogs';
+            }
+
+            // Top Saw Toggle Button
+            const topSawBtn = document.getElementById('btn-toggle-topsaw');
+            if (state.topSawEngaged) {
+                topSawBtn.textContent = 'TOP SAW: ON (42") [T]';
+                topSawBtn.className = 'text-[10px] font-mono-tech px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold';
+            } else {
+                topSawBtn.textContent = 'TOP SAW: OFF (26") [T]';
+                topSawBtn.className = 'text-[10px] font-mono-tech px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-600 font-bold';
+            }
+
+            // Next Log Queue
+            if (state.nextLogSpec) {
+                document.getElementById('deck-queue-text').textContent = `Next: ${state.nextLogSpec.diameter.toFixed(1)}" ${state.nextLogSpec.species.name.split(' ')[1] || state.nextLogSpec.species.name}`;
+            }
+
+            // Cross-Section Readouts
+            document.getElementById('readout-knee-dist').textContent = `${state.kneeDistFromBlade.toFixed(1)}"`;
+            if (state.log) {
+                const dims = getLogDimensions(state.log);
+                const eighths = Math.round(state.log.rotationDeg / 45) % 8;
+                document.getElementById('log-angle-badge').textContent = `${state.log.rotationDeg}° (${eighths}/8)`;
+                document.getElementById('log-species-badge').textContent = `${state.log.diameter.toFixed(1)}" ${state.log.species.name}`;
+                document.getElementById('readout-log-dims').textContent = `${dims.width.toFixed(1)}" × ${dims.height.toFixed(1)}"`;
+                const cutThick = dims.width - state.kneeDistFromBlade - KERF;
+                if (cutThick > 0.05) {
+                    document.getElementById('readout-cut-thick').textContent = `${cutThick.toFixed(2)}"`;
+                    document.getElementById('readout-cut-thick').className = 'font-mono-tech text-sm font-bold text-emerald-400';
+                } else {
+                    document.getElementById('readout-cut-thick').textContent = 'NO CUT';
+                    document.getElementById('readout-cut-thick').className = 'font-mono-tech text-sm font-bold text-slate-500';
+                }
+            } else {
+                document.getElementById('log-angle-badge').textContent = '0° (0/8)';
+                document.getElementById('log-species-badge').textContent = 'Bunk Empty';
+                document.getElementById('readout-log-dims').textContent = '--';
+                document.getElementById('readout-cut-thick').textContent = '--';
+            }
+
+            // Feed Lever Readout
+            const feedEl = document.getElementById('feed-rate-readout');
+            if (Math.abs(state.feedVelocityFt) < 0.08) {
+                feedEl.textContent = 'NEUTRAL (0.0 ft/s)';
+                feedEl.className = 'text-[11px] font-mono-tech font-bold text-slate-400';
+            } else if (state.feedVelocityFt > 0) {
+                feedEl.textContent = `FEED FWD (${state.feedVelocityFt.toFixed(1)} ft/s)`;
+                feedEl.className = 'text-[11px] font-mono-tech font-bold text-emerald-400';
+            } else {
+                feedEl.textContent = `REVERSE (${Math.abs(state.feedVelocityFt).toFixed(1)} ft/s)`;
+                feedEl.className = 'text-[11px] font-mono-tech font-bold text-blue-400';
+            }
+        }
+
+        // ============================================================================
+        // CANVAS 1: TOP-DOWN HEAD-RIG SAWMILL RENDERER
+        // ============================================================================
+        const millCanvas = document.getElementById('millCanvas');
+        const mCtx = millCanvas.getContext('2d');
+
+        function renderMillCanvas() {
+            const w = millCanvas.width;
+            const h = millCanvas.height;
+            mCtx.clearRect(0, 0, w, h);
+
+            // Coordinate Mapping:
+            // X-axis = Track longitudinal direction (0 ft to 42 ft)
+            // Y-axis = Mill width (Log Deck at top -> Carriage Track -> Saw Line -> Off-Bearing Rollers at bottom)
+            const totalTrackSpanFt = 42;
+            const pxPerFt = w / totalTrackSpanFt;
+            const pxPerInch = pxPerFt / 12;
+
+            // 1. Mill Shed Floor & Sawdust Pit Background
+            mCtx.fillStyle = '#14171a';
+            mCtx.fillRect(0, 0, w, h);
+
+            // Subtle concrete expansion joints & timber posts
+            mCtx.strokeStyle = '#1e2329';
+            mCtx.lineWidth = 1;
+            for (let gx = 0; gx < w; gx += pxPerFt * 4) {
+                mCtx.beginPath();
+                mCtx.moveTo(gx, 0);
+                mCtx.lineTo(gx, h);
+                mCtx.stroke();
+            }
+
+            // Key Y positions on mill floor
+            const deckTopY = h * 0.05;
+            const deckBottomY = h * 0.31;
+            const trackCenterY = h * 0.48;
+            const sawLineY = h * 0.63;          // Fixed vertical plane of the 60" circular saw
+            const rollerCenterY = h * 0.78;     // Off-bearing live roller conveyor
+
+            // 2. LIVE LOG DECK (Top Section)
+            mCtx.fillStyle = '#1b1917';
+            mCtx.fillRect(pxPerFt * 1.2, deckTopY, pxPerFt * 14.5, deckBottomY - deckTopY);
+            mCtx.strokeStyle = '#3f3a36';
+            mCtx.lineWidth = 2;
+            mCtx.strokeRect(pxPerFt * 1.2, deckTopY, pxPerFt * 14.5, deckBottomY - deckTopY);
+
+            // Steel skid rails on log deck
+            const skidPositionsFt = [3.0, 7.5, 12.0];
+            skidPositionsFt.forEach(ft => {
+                const sx = ft * pxPerFt;
+                mCtx.fillStyle = '#475569';
+                mCtx.fillRect(sx - 3, deckTopY, 6, deckBottomY - deckTopY + 14);
+            });
+
+            // Queued Logs waiting on the Live Deck
+            if (state.nextLogSpec) {
+                const qDiamPx = Math.max(22, state.nextLogSpec.diameter * pxPerInch * 1.35);
+                const qLenPx = state.nextLogSpec.lengthFt * pxPerFt;
+                const qX = pxPerFt * 2.0;
+                const qY = deckBottomY - qDiamPx - 8;
+
+                drawTopDownLog(mCtx, qX, qY, qLenPx, qDiamPx, state.nextLogSpec.species, false, false, null);
+
+                // Background second waiting log
+                drawTopDownLog(mCtx, qX + 8, qY - qDiamPx - 8, qLenPx * 0.92, qDiamPx * 0.88, WOOD_SPECIES[2], false, false, null);
+            }
+
+            // Deck Label
+            mCtx.fillStyle = '#94a3b8';
+            mCtx.font = '600 11px "Chakra Petch", sans-serif';
+            mCtx.fillText('LIVE LOG DECK & STOP-LOADER', pxPerFt * 1.6, deckTopY + 15);
+
+            // 3. CARRIAGE STEEL RAILS (Running full length of mill)
+            const rail1Y = trackCenterY - 26;
+            const rail2Y = trackCenterY + 26;
+            // Wooden ties
+            mCtx.fillStyle = '#29221c';
+            for (let tx = 8; tx < w - 8; tx += 18) {
+                mCtx.fillRect(tx, rail1Y - 6, 8, (rail2Y - rail1Y) + 12);
+            }
+            // Steel V-rail & flat rail
+            mCtx.fillStyle = '#64748b';
+            mCtx.fillRect(0, rail1Y - 2, w, 4);
+            mCtx.fillRect(0, rail2Y - 2, w, 4);
+            mCtx.fillStyle = '#cbd5e1';
+            mCtx.fillRect(0, rail1Y - 1, w, 1.5);
+            mCtx.fillRect(0, rail2Y - 1, w, 1.5);
+
+            // 4. OFF-BEARING LIVE ROLLER CONVEYOR (Behind Saw Blade)
+            const bladeX = BLADE_Z_FT * pxPerFt;
+            const convStartX = bladeX + 12;
+            const convWidth = w - convStartX - 10;
+            const convHeight = 38;
+
+            mCtx.fillStyle = '#1e293b';
+            mCtx.fillRect(convStartX, rollerCenterY - convHeight / 2, convWidth, convHeight);
+            mCtx.strokeStyle = '#475569';
+            mCtx.lineWidth = 2;
+            mCtx.strokeRect(convStartX, rollerCenterY - convHeight / 2, convWidth, convHeight);
+
+            // Spinning steel live rollers
+            mCtx.fillStyle = '#94a3b8';
+            for (let rx = convStartX + 10; rx < convStartX + convWidth - 6; rx += 16) {
+                mCtx.fillRect(rx, rollerCenterY - convHeight / 2 + 3, 5, convHeight - 6);
+            }
+
+            mCtx.fillStyle = '#64748b';
+            mCtx.font = '600 10px "Chakra Petch", sans-serif';
+            mCtx.fillText('OFF-BEARING LIVE ROLLCASE CONVEYOR →', convStartX + 8, rollerCenterY + convHeight / 2 + 13);
+
+            // Draw Boards / Slabs riding down the off-bearing conveyor
+            state.conveyorItems.forEach(item => {
+                const bx = item.xFt * pxPerFt;
+                const bLen = item.lengthFt * pxPerFt;
+                const bThickPx = Math.max(6, item.thickness * pxPerInch * 1.6);
+                mCtx.fillStyle = item.color;
+                mCtx.strokeStyle = '#1e1b18';
+                mCtx.lineWidth = 1.5;
+                mCtx.beginPath();
+                mCtx.roundRect(bx, rollerCenterY - bThickPx / 2, bLen, bThickPx, 2);
+                mCtx.fill();
+                mCtx.stroke();
+            });
+
+            // 5. RED LASER KERF SIGHTLINE
+            mCtx.save();
+            mCtx.strokeStyle = 'rgba(239, 68, 68, 0.85)';
+            mCtx.lineWidth = 1.8;
+            mCtx.setLineDash([8, 5]);
+            mCtx.beginPath();
+            mCtx.moveTo(pxPerFt * 0.5, sawLineY);
+            mCtx.lineTo(w - 10, sawLineY);
+            mCtx.stroke();
+            mCtx.restore();
+
+            // 6. MOVING STEEL LOG CARRIAGE & 3 HEADBLOCK KNEES
+            const carriageLenFt = 14.5;
+            const carX = state.carriagePosFt * pxPerFt;
+            const carW = carriageLenFt * pxPerFt;
+            const carTopY = rail1Y - 10;
+            const carBotY = sawLineY - 4; // Carriage bunks stop just shy of the saw kerf!
+
+            // Main structural steel I-beam carriage frame (industrial blue-grey)
+            mCtx.fillStyle = '#253342';
+            mCtx.strokeStyle = '#475569';
+            mCtx.lineWidth = 2;
+            mCtx.beginPath();
+            mCtx.roundRect(carX, carTopY, carW, carBotY - carTopY, 4);
+            mCtx.fill();
+            mCtx.stroke();
+
+            // Inner frame truss bars
+            mCtx.fillStyle = '#1b2631';
+            mCtx.fillRect(carX + 10, carTopY + 8, carW - 20, (carBotY - carTopY) - 16);
+
+            // 3 Headblocks & Sliding Knees
+            // Visual scale factor so 40" log looks substantial on the carriage
+            const bunkVisualScale = (carBotY - carTopY - 12) / MAX_KNEE_OPENING;
+            const kneeY = sawLineY - (state.kneeDistFromBlade * bunkVisualScale);
+
+            const headblockOffsetsFt = [2.2, 7.25, 12.3];
+            headblockOffsetsFt.forEach(offsetFt => {
+                const hx = carX + offsetFt * pxPerFt;
+
+                // Horizontal headblock bunk slide
+                mCtx.fillStyle = '#64748b';
+                mCtx.fillRect(hx - 6, carTopY + 2, 12, carBotY - carTopY - 2);
+                // Polished steel wear strip
+                mCtx.fillStyle = '#cbd5e1';
+                mCtx.fillRect(hx - 2, carTopY + 4, 4, carBotY - carTopY - 6);
+
+                // Sliding Vertical Knee Block
+                mCtx.fillStyle = '#f59e0b';
+                mCtx.strokeStyle = '#78350f';
+                mCtx.lineWidth = 1.5;
+                mCtx.fillRect(hx - 9, kneeY - 12, 18, 12);
+                mCtx.strokeRect(hx - 9, kneeY - 12, 18, 12);
+
+                // Hydraulic Tong Dogs (teeth extending forward when clamped)
+                if (state.dogsClamped && state.log) {
+                    mCtx.fillStyle = '#ef4444';
+                    mCtx.beginPath();
+                    mCtx.moveTo(hx - 4, kneeY);
+                    mCtx.lineTo(hx + 4, kneeY);
+                    mCtx.lineTo(hx, kneeY + 10);
+                    mCtx.closePath();
+                    mCtx.fill();
+                }
+            });
+
+            // Hydraulic Bar Turner Animation (pops up between headblocks when turning)
+            if (state.turnerAnim > 0) {
+                const tx = carX + 5.0 * pxPerFt;
+                const armLen = Math.sin(state.turnerAnim * Math.PI) * 34;
+                mCtx.fillStyle = '#3b82f6';
+                mCtx.fillRect(tx - 5, kneeY - armLen, 10, armLen + 14);
+            }
+
+            // 7. LOG ON CARRIAGE
+            if (state.log) {
+                const dims = getLogDimensions(state.log);
+                const logLenPx = state.log.lengthFt * pxPerFt;
+                const logSpanPx = dims.width * bunkVisualScale;
+                const logStartX = carX + 1.0 * pxPerFt;
+                // Left edge rests firmly against the knee face (kneeY), extending down toward/past sawLineY
+                const logTopEdgeY = kneeY;
+
+                const flatFaces = countFlatFaces(state.log.poly, state.log.edgeTypes);
+                const hasFlatTop = flatFaces >= 2;
+                const hasFlatSides = flatFaces >= 1;
+
+                drawTopDownLog(
+                    mCtx,
+                    logStartX,
+                    logTopEdgeY,
+                    logLenPx,
+                    logSpanPx,
+                    state.log.species,
+                    hasFlatTop,
+                    hasFlatSides,
+                    state.log
+                );
+
+                // If currently mid-cut, highlight the kerf split line through the log
+                if (state.isCutting && state.cutProgress > 0) {
+                    const splitLen = logLenPx * state.cutProgress;
+                    const splitStartX = logStartX + logLenPx - splitLen;
+                    mCtx.strokeStyle = '#090b0d';
+                    mCtx.lineWidth = 3;
+                    mCtx.beginPath();
+                    mCtx.moveTo(splitStartX, sawLineY);
+                    mCtx.lineTo(logStartX + logLenPx, sawLineY);
+                    mCtx.stroke();
+                }
+            }
+
+            // 8. STATIONARY SAW HUSK, DETROIT PTO DRIVE & 60" CIRCULAR SAW BLADE
+            const huskW = 48;
+            const huskH = 54;
+            const huskX = bladeX - huskW / 2;
+            const huskY = sawLineY + 6;
+
+            // Saw husk steel housing
+            mCtx.fillStyle = '#1e293b';
+            mCtx.strokeStyle = '#64748b';
+            mCtx.lineWidth = 2;
+            mCtx.fillRect(huskX, huskY, huskW, huskH);
+            mCtx.strokeRect(huskX, huskY, huskW, huskH);
+
+            // V-Belts from Detroit Diesel PTO into saw arbor
+            mCtx.strokeStyle = '#090d16';
+            mCtx.lineWidth = 4;
+            mCtx.beginPath();
+            mCtx.moveTo(huskX + 12, huskY + huskH);
+            mCtx.lineTo(huskX + 6, h - 4);
+            mCtx.moveTo(huskX + 20, huskY + huskH);
+            mCtx.lineTo(huskX + 14, h - 4);
+            mCtx.stroke();
+
+            // 60-inch Spinning Circular Blade (seen edge-on along sawLineY)
+            const bladeSpanPx = BLADE_DIAMETER * pxPerInch * 1.15;
+            mCtx.fillStyle = '#e2e8f0';
+            mCtx.fillRect(bladeX - bladeSpanPx / 2, sawLineY - 2, bladeSpanPx, 4);
+
+            // Overhead 36" Top Saw housing indicator when engaged
+            if (state.topSawEngaged) {
+                const topSpanPx = TOP_SAW_DIAMETER * pxPerInch * 1.15;
+                mCtx.fillStyle = '#38bdf8';
+                mCtx.fillRect(bladeX - topSpanPx / 2, sawLineY - 4, topSpanPx, 2);
+            }
+
+            // Animated saw teeth shimmer along blade edge
+            const toothOffset = (state.bladeAngle * 14) % 12;
+            mCtx.fillStyle = '#f59e0b';
+            for (let tx = bladeX - bladeSpanPx / 2 + toothOffset; tx < bladeX + bladeSpanPx / 2; tx += 12) {
+                mCtx.fillRect(tx, sawLineY - 3, 3, 6);
+            }
+
+            // 9. SAWDUST PARTICLE SPRAY
+            state.sawdust.forEach(p => {
+                mCtx.fillStyle = p.color;
+                mCtx.beginPath();
+                mCtx.arc(bladeX + p.x, sawLineY + p.y, p.size, 0, Math.PI * 2);
+                mCtx.fill();
+            });
+
+            // 10. ENCLOSED SAWYER OPERATOR CAB (Bottom-Left vantage point looking down saw line)
+            const cabW = 68;
+            const cabH = 58;
+            const cabX = 12;
+            const cabY = sawLineY + 14;
+            mCtx.fillStyle = 'rgba(30, 41, 59, 0.9)';
+            mCtx.strokeStyle = '#f59e0b';
+            mCtx.lineWidth = 2;
+            mCtx.beginPath();
+            mCtx.roundRect(cabX, cabY, cabW, cabH, 6);
+            mCtx.fill();
+            mCtx.stroke();
+
+            mCtx.fillStyle = '#f59e0b';
+            mCtx.font = '700 10px "Chakra Petch", sans-serif';
+            mCtx.fillText('SAWYER', cabX + 12, cabY + 24);
+            mCtx.fillText('CAB #855', cabX + 10, cabY + 38);
+        }
+
+        function drawTopDownLog(ctx, x, y, lenPx, widthPx, species, isSawnFace, hasFlatSides, logObj = null) {
+            ctx.save();
+            const tex = getSpeciesTextures(species);
+
+            // Natural subtle trunk taper from butt end (left) to crown end (right) on un-squared logs
+            const taper = isSawnFace ? 0 : Math.min(4.5, widthPx * 0.08);
+            const rLeft = hasFlatSides ? 2 : 7;
+            const rRight = hasFlatSides ? 2 : 6;
+
+            // Build organic trunk silhouette path
+            ctx.beginPath();
+            ctx.moveTo(x + rLeft, y);
+            ctx.lineTo(x + lenPx - rRight, y + taper * 0.5);
+            ctx.quadraticCurveTo(x + lenPx, y + taper * 0.5, x + lenPx, y + taper * 0.5 + rRight);
+            ctx.lineTo(x + lenPx, y + widthPx - taper * 0.5 - rRight);
+            ctx.quadraticCurveTo(x + lenPx, y + widthPx - taper * 0.5, x + lenPx - rRight, y + widthPx - taper * 0.5);
+            ctx.lineTo(x + rLeft, y + widthPx);
+            ctx.quadraticCurveTo(x, y + widthPx, x, y + widthPx - rLeft);
+            ctx.lineTo(x, y + rLeft);
+            ctx.quadraticCurveTo(x, y, x + rLeft, y);
+            ctx.closePath();
+
+            // Fill with procedural bark texture or freshly sawn cathedral heartwood/sapwood texture
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.fillStyle = isSawnFace ? tex.woodPattern : tex.barkPattern;
+            ctx.fill();
+            ctx.restore();
+
+            ctx.clip();
+
+            // Cylindrical 3D lighting gradient across log diameter (top highlight, lower ambient shadow)
+            const cylGrad = ctx.createLinearGradient(0, y, 0, y + widthPx);
+            if (isSawnFace) {
+                cylGrad.addColorStop(0.0, 'rgba(255, 248, 235, 0.22)');
+                cylGrad.addColorStop(0.25, 'rgba(255, 255, 255, 0.04)');
+                cylGrad.addColorStop(0.85, 'rgba(20, 12, 6, 0.14)');
+                cylGrad.addColorStop(1.0, 'rgba(15, 10, 5, 0.28)');
+            } else {
+                cylGrad.addColorStop(0.0, 'rgba(255, 245, 230, 0.16)');
+                cylGrad.addColorStop(0.32, 'rgba(255, 255, 255, 0.03)');
+                cylGrad.addColorStop(0.75, 'rgba(10, 8, 6, 0.28)');
+                cylGrad.addColorStop(1.0, 'rgba(5, 4, 3, 0.52)');
+            }
+            ctx.fillStyle = cylGrad;
+            ctx.fillRect(x, y, lenPx, widthPx);
+
+            // If at least 1 side has been sawn (even before top face is flattened), show exposed fresh wood strip along the sawn side(s)
+            if (hasFlatSides && !isSawnFace) {
+                const stripH = Math.max(4, widthPx * 0.16);
+                ctx.save();
+                ctx.translate(x, y + widthPx - stripH);
+                ctx.fillStyle = tex.woodPattern;
+                ctx.fillRect(0, 0, lenPx, stripH);
+                ctx.restore();
+            }
+
+            // Render natural branch knots & surrounding grain deflection
+            const knots = (logObj && logObj.knots) ? logObj.knots : [
+                { u: 0.28, v: 0.38, rx: 0.025, ry: 0.06, angle: 0.15 },
+                { u: 0.68, v: 0.64, rx: 0.022, ry: 0.055, angle: -0.2 }
+            ];
+            knots.forEach(k => {
+                const kx = x + k.u * lenPx;
+                const ky = y + k.v * widthPx;
+                const krx = Math.max(3, k.rx * lenPx);
+                const kry = Math.max(2, k.ry * widthPx);
+
+                ctx.save();
+                ctx.translate(kx, ky);
+                ctx.rotate(k.angle);
+
+                // Knot halo
+                ctx.fillStyle = isSawnFace ? species.heartDark : species.barkFurrow;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, krx * 1.45, kry * 1.45, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Dark tight knot core
+                ctx.fillStyle = '#26170d';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, krx, kry, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Inner knot ring
+                ctx.strokeStyle = species.grainColor;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, krx * 0.55, kry * 0.55, 0, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            });
+
+            // Rough bark edges on un-sawn outer perimeter
+            if (!hasFlatSides) {
+                ctx.strokeStyle = species.barkFurrow;
+                ctx.lineWidth = 3.5;
+                ctx.strokeRect(x, y, lenPx, widthPx);
+            }
+
+            // Exposed End-Grain Caps (Butt & Crown ends)
+            const capW = Math.max(4, Math.min(7, lenPx * 0.03));
+            ctx.fillStyle = species.sapColor;
+            ctx.fillRect(x, y + 1, capW, widthPx - 2);
+            ctx.fillRect(x + lenPx - capW, y + 1, capW, widthPx - 2);
+
+            ctx.fillStyle = species.heartColor;
+            ctx.fillRect(x + 1, y + widthPx * 0.22, capW - 2, widthPx * 0.56);
+            ctx.fillRect(x + lenPx - capW + 1, y + widthPx * 0.22, capW - 2, widthPx * 0.56);
+
+            ctx.restore();
+        }
+
+        // ============================================================================
+        // CANVAS 2: END-GRAIN CROSS-SECTION & LASER KERF DIAGRAM
+        // ============================================================================
+        const crossCanvas = document.getElementById('crossCanvas');
+        const cCtx = crossCanvas.getContext('2d');
+
+        function renderCrossSectionCanvas() {
+            const w = crossCanvas.width;
+            const h = crossCanvas.height;
+            cCtx.clearRect(0, 0, w, h);
+
+            cCtx.fillStyle = '#0f1216';
+            cCtx.fillRect(0, 0, w, h);
+
+            // Unified isotropic scale: fit 48" horizontally AND 46" vertically so full 40" logs never clip
+            const viewSpanInchesX = 48;
+            const viewSpanInchesY = 46;
+            const pxPerIn = Math.min((w - 36) / viewSpanInchesX, (h - 46) / viewSpanInchesY);
+
+            const bunkFloorY = h - 28;
+            // Position the saw laser line so both the 42" knee opening and right-side labels fit cleanly
+            const sawLaserX = Math.max(w * 0.72, 24 + 42.5 * pxPerIn);
+
+            // 1. Carriage Bunk Steel Floor
+            cCtx.fillStyle = '#334155';
+            cCtx.fillRect(16, bunkFloorY, w - 32, 12);
+            cCtx.fillStyle = '#94a3b8';
+            cCtx.fillRect(16, bunkFloorY, w - 32, 2);
+
+            // 2. Sliding Headblock Knee (positioned kneeDistFromBlade inches left of sawLaserX)
+            const kneeFaceX = sawLaserX - state.kneeDistFromBlade * pxPerIn;
+            const kneeHeightPx = 34 * pxPerIn;
+
+            cCtx.fillStyle = '#d97706';
+            cCtx.strokeStyle = '#78350f';
+            cCtx.lineWidth = 2;
+            cCtx.fillRect(kneeFaceX - 18, bunkFloorY - kneeHeightPx, 18, kneeHeightPx);
+            cCtx.strokeRect(kneeFaceX - 18, bunkFloorY - kneeHeightPx, 18, kneeHeightPx);
+
+            // Knee measurement ruler ticks
+            cCtx.strokeStyle = '#334155';
+            cCtx.lineWidth = 1;
+            for (let inch = 2; inch <= 40; inch += 2) {
+                const tx = sawLaserX - inch * pxPerIn;
+                if (tx < 16) break;
+                cCtx.beginPath();
+                cCtx.moveTo(tx, bunkFloorY + 12);
+                cCtx.lineTo(tx, bunkFloorY + (inch % 10 === 0 ? 22 : 17));
+                cCtx.stroke();
+            }
+
+            // 3. Draw the Log End-Grain Cross-Section (resting on bunkFloorY, pressed against kneeFaceX)
+            if (state.log) {
+                const log = state.log;
+                const rPx = log.radius * pxPerIn;
+                const bounds = getPolyBounds(log.poly);
+
+                // Place bounding box leftmost face against kneeFaceX and bottommost face on bunkFloorY
+                const originX = kneeFaceX - bounds.minX * pxPerIn;
+                const originY = bunkFloorY - bounds.maxY * pxPerIn;
+
+                cCtx.save();
+                // Build exact polygonal clip path from log.poly
+                cCtx.beginPath();
+                log.poly.forEach((pt, idx) => {
+                    const px = originX + pt.x * pxPerIn;
+                    const py = originY + pt.y * pxPerIn;
+                    if (idx === 0) cCtx.moveTo(px, py);
+                    else cCtx.lineTo(px, py);
+                });
+                cCtx.closePath();
+                cCtx.clip();
+
+                // Creamy Sapwood Base across entire clipped cross-section
+                const sapGrad = cCtx.createRadialGradient(originX, originY, rPx * 0.15, originX, originY, rPx);
+                sapGrad.addColorStop(0.0, log.species.heartDark);
+                sapGrad.addColorStop(0.62, log.species.heartColor);
+                sapGrad.addColorStop(0.74, log.species.sapColor);
+                sapGrad.addColorStop(1.0, log.species.sapColor);
+                cCtx.fillStyle = sapGrad;
+                cCtx.beginPath();
+                cCtx.arc(originX, originY, rPx * 1.15, 0, Math.PI * 2);
+                cCtx.fill();
+
+                // Organic Heartwood Core (with subtle natural ring wobble)
+                const heartR = Math.max(4, rPx * 0.68);
+                cCtx.fillStyle = log.species.heartColor;
+                cCtx.beginPath();
+                for (let s = 0; s <= 48; s++) {
+                    const a = (s / 48) * Math.PI * 2;
+                    const wobble = 1 + Math.sin(a * 3 + log.ringPhase) * 0.035 + Math.cos(a * 5 - log.ringPhase) * 0.02;
+                    const rx = originX + Math.cos(a) * heartR * wobble;
+                    const ry = originY + Math.sin(a) * heartR * wobble;
+                    if (s === 0) cCtx.moveTo(rx, ry);
+                    else cCtx.lineTo(rx, ry);
+                }
+                cCtx.closePath();
+                cCtx.fill();
+
+                // Darker inner pith / cathedral heartwood center
+                cCtx.fillStyle = log.species.heartDark;
+                cCtx.beginPath();
+                cCtx.arc(originX, originY, Math.max(2.5, rPx * 0.16), 0, Math.PI * 2);
+                cCtx.fill();
+
+                // Concentric Annual Growth Rings with natural organic wobble & earlywood/latewood contrast
+                const ringStep = Math.max(3.6, rPx / 16);
+                for (let ringR = ringStep; ringR < rPx * 1.05; ringR += ringStep) {
+                    const isHeartRing = ringR < heartR;
+                    cCtx.strokeStyle = isHeartRing ? log.species.grainColor : 'rgba(138, 102, 66, 0.42)';
+                    cCtx.lineWidth = (Math.round(ringR / ringStep) % 4 === 0) ? 1.45 : 0.85;
+                    cCtx.beginPath();
+                    for (let s = 0; s <= 48; s++) {
+                        const a = (s / 48) * Math.PI * 2;
+                        const wobble = 1 + Math.sin(a * 3 + log.ringPhase + ringR * 0.04) * 0.028 + Math.cos(a * 4 - log.ringPhase) * 0.018;
+                        const rx = originX + Math.cos(a) * ringR * wobble;
+                        const ry = originY + Math.sin(a) * ringR * wobble;
+                        if (s === 0) cCtx.moveTo(rx, ry);
+                        else cCtx.lineTo(rx, ry);
+                    }
+                    cCtx.closePath();
+                    cCtx.stroke();
+                }
+
+                // Medullary Rays (subtle radial wood fibers radiating from pith)
+                cCtx.strokeStyle = 'rgba(92, 58, 30, 0.18)';
+                cCtx.lineWidth = 0.8;
+                for (let ray = 0; ray < 24; ray++) {
+                    const ra = (ray / 24) * Math.PI * 2 + log.ringPhase * 0.5;
+                    cCtx.beginPath();
+                    cCtx.moveTo(originX + Math.cos(ra) * 4, originY + Math.sin(ra) * 4);
+                    cCtx.lineTo(originX + Math.cos(ra) * rPx * 0.96, originY + Math.sin(ra) * rPx * 0.96);
+                    cCtx.stroke();
+                }
+
+                // Realistic End-Grain Radial Drying Checks (small heartwood splits)
+                const rotRad = (log.rotationDeg * Math.PI) / 180;
+                (log.radialChecks || []).forEach(chk => {
+                    const ca = chk.angle + rotRad;
+                    const len = rPx * chk.lengthRatio;
+                    cCtx.strokeStyle = '#2b180c';
+                    cCtx.lineWidth = chk.width;
+                    cCtx.beginPath();
+                    cCtx.moveTo(originX + Math.cos(ca) * 2, originY + Math.sin(ca) * 2);
+                    cCtx.quadraticCurveTo(
+                        originX + Math.cos(ca + 0.06) * (len * 0.55),
+                        originY + Math.sin(ca + 0.06) * (len * 0.55),
+                        originX + Math.cos(ca) * len,
+                        originY + Math.sin(ca) * len
+                    );
+                    cCtx.stroke();
+                });
+
+                // Highlight the sliver/board to the RIGHT of the laser line that will be sliced off!
+                const polyRightPx = originX + bounds.maxX * pxPerIn;
+                const polyTopPx = originY + bounds.minY * pxPerIn;
+                const polyBotPx = originY + bounds.maxY * pxPerIn;
+                if (polyRightPx > sawLaserX) {
+                    cCtx.fillStyle = 'rgba(239, 68, 68, 0.30)';
+                    cCtx.fillRect(sawLaserX, polyTopPx, polyRightPx - sawLaserX, polyBotPx - polyTopPx);
+                }
+
+                cCtx.restore();
+
+                // Perimeter Rendering: Thick furrowed bark ONLY on uncut 'bark' segments, crisp freshly exposed wood on 'sawn' edges!
+                const edgeTypes = log.edgeTypes || log.poly.map(() => 'bark');
+                const barkThicknessPx = Math.max(4.5, Math.min(8.5, rPx * 0.095));
+
+                for (let i = 0; i < log.poly.length; i++) {
+                    const p1 = log.poly[i];
+                    const p2 = log.poly[(i + 1) % log.poly.length];
+                    const x1 = originX + p1.x * pxPerIn;
+                    const y1 = originY + p1.y * pxPerIn;
+                    const x2 = originX + p2.x * pxPerIn;
+                    const y2 = originY + p2.y * pxPerIn;
+                    const isBark = edgeTypes[i] !== 'sawn';
+
+                    if (isBark) {
+                        // Outer dark bark ridge
+                        cCtx.strokeStyle = log.species.barkFurrow;
+                        cCtx.lineWidth = barkThicknessPx;
+                        cCtx.lineCap = 'round';
+                        cCtx.beginPath();
+                        cCtx.moveTo(x1, y1);
+                        cCtx.lineTo(x2, y2);
+                        cCtx.stroke();
+
+                        // Mid bark layer with textured ridge
+                        cCtx.strokeStyle = (i % 2 === 0) ? log.species.barkColor : log.species.barkHighlight;
+                        cCtx.lineWidth = barkThicknessPx * 0.55;
+                        cCtx.beginPath();
+                        cCtx.moveTo(x1, y1);
+                        cCtx.lineTo(x2, y2);
+                        cCtx.stroke();
+                    } else {
+                        // Crisp, freshly sawn straight edge (no bark!)
+                        cCtx.strokeStyle = log.species.sapColor;
+                        cCtx.lineWidth = 2.0;
+                        cCtx.lineCap = 'butt';
+                        cCtx.beginPath();
+                        cCtx.moveTo(x1, y1);
+                        cCtx.lineTo(x2, y2);
+                        cCtx.stroke();
+                    }
+                }
+
+                // Draw Hydraulic Tong Dogs biting into top & bottom of log when clamped
+                if (state.dogsClamped) {
+                    const topClampY = originY + bounds.minY * pxPerIn;
+                    cCtx.fillStyle = '#ef4444';
+                    // Upper tong dog
+                    cCtx.beginPath();
+                    cCtx.moveTo(kneeFaceX, topClampY - 6);
+                    cCtx.lineTo(kneeFaceX + 14, topClampY + 3);
+                    cCtx.lineTo(kneeFaceX, topClampY + 6);
+                    cCtx.closePath();
+                    cCtx.fill();
+
+                    // Lower tong dog
+                    cCtx.beginPath();
+                    cCtx.moveTo(kneeFaceX, bunkFloorY - 2);
+                    cCtx.lineTo(kneeFaceX + 14, bunkFloorY - 6);
+                    cCtx.lineTo(kneeFaceX, bunkFloorY - 12);
+                    cCtx.closePath();
+                    cCtx.fill();
+                }
+            }
+
+            // 4. 60-Inch Main Circular Saw Blade (26" reach) + 36-Inch Overhead Top Saw (42" reach)
+            const mainCutPx = MAX_MAIN_CUT_HEIGHT * pxPerIn;
+            const mainBladeTopY = bunkFloorY - mainCutPx;
+
+            // Main lower 60" saw blade silhouette
+            cCtx.fillStyle = 'rgba(203, 213, 225, 0.24)';
+            cCtx.fillRect(sawLaserX - 2, mainBladeTopY, 4, mainCutPx + 14);
+
+            // Overhead 36" Top Saw silhouette descending from top
+            if (state.topSawEngaged) {
+                const topCutPx = MAX_TOP_SAW_HEIGHT * pxPerIn;
+                const topBladeTopY = bunkFloorY - topCutPx;
+                cCtx.fillStyle = 'rgba(56, 189, 248, 0.35)';
+                cCtx.fillRect(sawLaserX - 2.5, topBladeTopY, 5, mainBladeTopY - topBladeTopY);
+
+                // Top Saw Arbor Hub
+                cCtx.fillStyle = '#0284c7';
+                cCtx.beginPath();
+                cCtx.arc(sawLaserX, topBladeTopY + 12, 6, 0, Math.PI * 2);
+                cCtx.fill();
+
+                cCtx.strokeStyle = '#38bdf8';
+                cCtx.lineWidth = 1.5;
+                cCtx.beginPath();
+                cCtx.moveTo(sawLaserX - 10, topBladeTopY);
+                cCtx.lineTo(sawLaserX + 10, topBladeTopY);
+                cCtx.stroke();
+
+                cCtx.fillStyle = '#38bdf8';
+                cCtx.font = '600 10px "JetBrains Mono", monospace';
+                cCtx.fillText('42" Top Saw', sawLaserX + 8, topBladeTopY + 4);
+            }
+
+            // Red Laser Sightline
+            cCtx.strokeStyle = '#ef4444';
+            cCtx.lineWidth = 2;
+            cCtx.setLineDash([6, 4]);
+            cCtx.beginPath();
+            cCtx.moveTo(sawLaserX, 12);
+            cCtx.lineTo(sawLaserX, bunkFloorY + 14);
+            cCtx.stroke();
+            cCtx.setLineDash([]);
+
+            // 26" Main Blade Ceiling Tick
+            cCtx.strokeStyle = '#f59e0b';
+            cCtx.lineWidth = 1.5;
+            cCtx.beginPath();
+            cCtx.moveTo(sawLaserX - 10, mainBladeTopY);
+            cCtx.lineTo(sawLaserX + 10, mainBladeTopY);
+            cCtx.stroke();
+
+            cCtx.fillStyle = '#f59e0b';
+            cCtx.font = '600 10px "JetBrains Mono", monospace';
+            cCtx.fillText('26" Main', sawLaserX + 8, mainBladeTopY + 4);
+
+            cCtx.fillStyle = '#ef4444';
+            cCtx.fillText('SAW KERF', sawLaserX + 6, 20);
+        }
+
+        // --- RESPONSIVE CANVAS SIZING ---
+        function resizeCanvases() {
+            const millWrap = document.getElementById('mill-canvas-wrapper');
+            millCanvas.width = millWrap.clientWidth;
+            millCanvas.height = millWrap.clientHeight;
+
+            const crossWrap = document.getElementById('cross-canvas-wrapper');
+            crossCanvas.width = crossWrap.clientWidth;
+            crossCanvas.height = crossWrap.clientHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvases);
+
+        // --- INPUT & EVENT BINDINGS ---
+        document.getElementById('btn-load-log').addEventListener('click', loadLogOntoCarriage);
+        document.getElementById('btn-queue-40').addEventListener('click', queueOversized40Log);
+        document.getElementById('btn-toggle-dogs').addEventListener('click', toggleDogs);
+        document.getElementById('btn-turn-eighth').addEventListener('click', turnLogEighth);
+        document.getElementById('btn-turn-log').addEventListener('click', turnLog90);
+        document.getElementById('btn-toggle-topsaw').addEventListener('click', toggleTopSaw);
+
+        document.getElementById('btn-knee-back').addEventListener('click', () => adjustSetworks(1.0));
+        document.getElementById('btn-knee-fwd').addEventListener('click', () => adjustSetworks(-1.0));
+        document.getElementById('btn-preset-nibble').addEventListener('click', setPresetNibble);
+        document.getElementById('btn-preset-1in').addEventListener('click', () => setPresetBoardCut(1.0));
+        document.getElementById('btn-preset-2in').addEventListener('click', () => setPresetBoardCut(2.0));
+
+        document.getElementById('clear-bunk-btn').addEventListener('click', dumpRemainder);
+        document.getElementById('skip-order-btn').addEventListener('click', () => {
+            state.orderNum++;
+            assignNewOrder();
+            showToast('New customer order ticket pulled.', 'amber');
+        });
+
+        const feedSlider = document.getElementById('feed-lever');
+        feedSlider.addEventListener('input', (e) => {
+            state.feedLever = parseInt(e.target.value, 10);
+        });
+        document.getElementById('btn-stop-feed').addEventListener('click', () => setFeedLever(0));
+        document.getElementById('btn-rev-fast').addEventListener('click', () => setFeedLever(-85));
+
+        // Audio toggle
+        document.getElementById('audio-toggle-btn').addEventListener('click', () => {
+            const active = audio.toggle();
+            document.getElementById('audio-icon').textContent = active ? '🔊' : '🔇';
+            document.getElementById('audio-label').textContent = active ? 'Engine Audio ON' : 'Start Engine Audio';
+            if (active) showToast('Detroit Diesel 6-71 & 60" Blade Audio Active', 'green');
+        });
+
+        // Help Modal
+        const helpModal = document.getElementById('help-modal');
+        document.getElementById('help-modal-btn').addEventListener('click', () => {
+            helpModal.classList.remove('hidden');
+            helpModal.classList.add('flex');
+        });
+        const closeHelp = () => {
+            helpModal.classList.add('hidden');
+            helpModal.classList.remove('flex');
+        };
+        document.getElementById('close-help-btn').addEventListener('click', closeHelp);
+        document.getElementById('start-sawing-btn').addEventListener('click', closeHelp);
+
+        // Keyboard Shortcuts for authentic Sawyer Cab controls
+        window.addEventListener('keydown', (e) => {
+            if (e.repeat) return;
+            const key = e.key.toLowerCase();
+
+            if (key === ' ') {
+                e.preventDefault();
+                toggleDogs();
+            } else if (key === 'l') {
+                loadLogOntoCarriage();
+            } else if (key === 'e') {
+                turnLogEighth();
+            } else if (key === 'r') {
+                turnLog90();
+            } else if (key === 't') {
+                toggleTopSaw();
+            } else if (key === 'n') {
+                setPresetNibble();
+            } else if (key === 'a' || key === 'arrowleft') {
+                adjustSetworks(1.0); // Retract knee 1"
+            } else if (key === 'd' || key === 'arrowright') {
+                adjustSetworks(-1.0); // Advance knee 1"
+            } else if (key === '1') {
+                setPresetBoardCut(1.0);
+            } else if (key === '2') {
+                setPresetBoardCut(2.0);
+            } else if (key === 'w' || key === 'arrowup') {
+                e.preventDefault();
+                setFeedLever(Math.min(100, state.feedLever + 25));
+            } else if (key === 's' || key === 'arrowdown') {
+                e.preventDefault();
+                setFeedLever(Math.max(-100, state.feedLever - 35));
+            } else if (key === 'x') {
+                setFeedLever(0);
+            } else if (key === 'c') {
+                dumpRemainder();
+            }
+        });
+
+        // --- MAIN ANIMATION LOOP ---
+        let lastTime = 0;
+        function gameLoop(timestamp) {
+            const dt = Math.min(0.05, (timestamp - lastTime) / 1000 || 0.016);
+            lastTime = timestamp;
+
+            updateSimulation(dt);
+            renderMillCanvas();
+            renderCrossSectionCanvas();
+            updateHUD();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- INITIALIZATION ---
+        window.onload = function () {
+            resizeCanvases();
+            state.nextLogSpec = { species: WOOD_SPECIES[0], diameter: 40, lengthFt: 12 };
+            assignNewOrder();
+            loadLogOntoCarriage();
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>

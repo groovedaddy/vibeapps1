@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Homework Tracker</title>
+  <style>
+    :root {
+      --bg: #f4f6f9;
+      --card: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --border: #e2e8f0;
+      --high: #ef4444;
+      --medium: #f59e0b;
+      --low: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 2rem 1rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 720px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+    }
+
+    .stats {
+      font-size: 0.9rem;
+      color: var(--muted);
+      background: var(--card);
+      padding: 0.4rem 0.85rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 1.25rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      border: 1px solid var(--border);
+      margin-bottom: 1.5rem;
+       }
+
+    form {
+      display: grid;
+      grid-template-columns: 2fr 1.2fr 1.2fr 1fr auto;
+      gap: 0.75rem;
+    }
+
+    input, select, button {
+      padding: 0.65rem 0.85rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--primary);
+    }
+
+    button.add-btn {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    button.add-btn:hover {
+      background: var(--primary-hover);
+    }
+
+    .filters {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+     }
+
+    form {
+      display: grid;
+      grid-template-columns: 2fr 1.2fr 1.2fr 1fr auto;
+      gap: 0.75rem;
+    }
+
+    input, select, button {
+      padding: 0.65rem 0.85rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--primary);
+    }
+
+    button.add-btn {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    button.add-btn:hover {
+      background: var(--primary-hover);
+    }
+
+    .filters {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+     }
+
+    form {
+      display: grid;
+      grid-template-columns: 2fr 1.2fr 1.2fr 1fr auto;
+      gap: 0.75rem;
+    }
+
+    input, select, button {
+      padding: 0.65rem 0.85rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--primary);
+    }
+
+    button.add-btn {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    button.add-btn:hover {
+      background: var(--primary-hover);
+    }
+
+    .filters {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+     .filter-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 0.4rem 0.9rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .filter-btn.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    .task-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .task-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      transition: opacity 0.2s;
+    }
+
+    .task-item.completed {
+      opacity: 0.6;
+      .task-item.completed .task-title {
+      text-decoration: line-through;
+      color: var(--muted);
+    }
+
+    .task-left {
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+      flex: 1;
+    }
+
+    .task-checkbox {
+      width: 1.2rem;
+      height: 1.2rem;
+      cursor: pointer;
+      accent-color: var(--primary);
+    }
+
+    .task-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .task-title {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    .task-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .badge {
+      padding: 0.15rem 0.55rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.75rem;
+      background: #e2e8f0;
+      color: #334155;
+    }
+
+    .priority-high { background: #fee2e2; color: var(--high); }
+    .priority-medium { background: #fef3c7; color: #b45309; }
+    .priority-low { background: #d1fae5; color: #047857; }
+
+    .overdue {
+      color: var(--high);
+      font-weight: 600;
+    }
+
+    .delete-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 1.1rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+    }
+
+    .delete-btn:hover {
+      background: #fee2e2;
+      color: var(--high);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: var(--muted);
+      background: var(--card);
+      border-radius: 10px;
+      border: 1px dashed var(--border);
+    }
+
+    @media (max-width: 640px) {
+      form {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Homework Tracker</h1>
+      <div class="stats" id="stats">0 remaining</div>
+    </header>
+
+    <div class="card">
+      <form id="task-form">
+        <input type="text" id="title" placeholder="Assignment title..." required />
+        <input type="text" id="subject" placeholder="Subject (e.g. Math)" required />
+        <input type="date" id="due-date" required />
+        <select id="priority">
+          <option value="medium">Medium Priority</option>
+          <option value="high">High Priority</option>
+          <option value="low">Low Priority</option>
+        </select>
+        <button type="submit" class="add-btn">Add</button>
+      </form>
+    </div>
+
+    <div class="filters">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="pending">Pending</button>
+      <button class="filter-btn" data-filter="completed">Completed</button>
+    </div>
+
+    <ul class="task-list" id="task-list"></ul>
+  </div>
+
+  <script>
+    const form = document.getElementById("task-form");
+    const taskList = document.getElementById("task-list");
+    const statsEl = document.getElementById("stats");
+    const filterBtns = document.querySelectorAll(".filter-btn");
+
+    let tasks = JSON.parse(localStorage.getItem("homework_tasks")) || [];
+    let currentFilter = "all";
+
+    function saveTasks() {
+      localStorage.setItem("homework_tasks", JSON.stringify(tasks));
+    }
+
+    function formatDate(dateStr) {
+      const [year, month, day] = dateStr.split("-");
+      const date = new Date(year, month - 1, day);
+      return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    }
+
+    function isOverdue(dateStr, completed) {
+      if (completed) return false;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const [year, month, day] = dateStr.split("-");
+      const due = new Date(year, month - 1, day);
+      return due < today;
+    }
+
+    function renderTasks() {
+      taskList.innerHTML = "";
+
+      const filtered = tasks
+        .filter((t) => {
+          if (currentFilter === "pending") return !t.completed;
+          if (currentFilter === "completed") return t.completed;
+          return true;
+        })
+        .sort((a, b) => a.completed - b.completed || a.dueDate.localeCompare(b.dueDate));
+
+      const remainingCount = tasks.filter((t) => !t.completed).length;
+      statsEl.textContent = `${remainingCount} remaining`;
+
+      if (filtered.length === 0) {
+        taskList.innerHTML = `<li class="empty-state">No assignments to show.</li>`;
+        return;
+      }
+
+      filtered.forEach((task) => {
+        const li = document.createElement("li");
+        li.className = `task-item ${task.completed ? "completed" : ""}`;
+
+        const overdue = isOverdue(task.dueDate, task.completed);
+
+        li.innerHTML = `
+          <div class="task-left">
+            <input type="checkbox" class="task-checkbox" ${task.completed ? "checked" : ""} />
+            <div class="task-info">
+              <span class="task-title"></span>
+              <div class="task-meta">
+                <span class="badge subject-badge"></span>
+                <span class="badge priority-task.priority">{task.priority.toUpperCase()}</span>
+                <span class="${overdue ? "overdue" : ""}">
+                  Due formatDate(task.dueDate){overdue ? " (Overdue)" : ""}
+                </span>
+              </div>
+            </div>
+          </div>
+          <button class="delete-btn" title="Delete">&times;</button>
+        `;
+
+        li.querySelector(".task-title").textContent = task.title;
+        li.querySelector(".subject-badge").textContent = task.subject;
+
+        li.querySelector(".task-checkbox").addEventListener("change", () => {
+          task.completed = !task.completed;
+          saveTasks();
+          renderTasks();
+        });
+
+        li.querySelector(".delete-btn").addEventListener("click", () => {
+          tasks = tasks.filter((t) => t.id !== task.id);
+          saveTasks();
+          renderTasks();
+        });
+
+        taskList.appendChild(li);
+      });
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const title = document.getElementById("title").value.trim();
+      const subject = document.getElementById("subject").value.trim();
+      const dueDate = document.getElementById("due-date").value;
+      const priority = document.getElementById("priority").value;
+
+      if (!title || !subject || !dueDate) return;
+
+      tasks.push({
+        id: Date.now(),
+        title,
+        subject,
+        dueDate,
+        priority,
+        completed: false,
+      });
+
+      saveTasks();
+      form.reset();
+      renderTasks();
+    });
+
+    filterBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        filterBtns.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentFilter = btn.dataset.filter;
+        renderTasks();
+      });
+    });
+
+    renderTasks();
+  </script>
+</body>
+</html>
